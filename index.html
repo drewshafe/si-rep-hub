@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShipInsure Rep Hub 🛠️</title>
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/drewshafe/si-roi-calculator/main/si_lock.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --header-grad: linear-gradient(135deg, #4a5fc1 0%, #6b7fd7 100%);
+            --accent: #4a5fc1;
+            --sidebar-width: 250px;
+        }
+
+        html, body { height: 100%; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Sidebar dock ── */
+        .layout {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--header-grad);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.25);
+            z-index: 10;
+            transition: margin-left 0.25s ease;
+        }
+
+        .sidebar.collapsed { margin-left: calc(-1 * var(--sidebar-width)); }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 16px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .logo-img { height: 40px; }
+
+        .app-title {
+            font-size: 1.05em;
+            font-weight: 700;
+            color: white;
+            line-height: 1.2;
+        }
+
+        .app-subtitle {
+            font-size: 0.72em;
+            font-weight: 500;
+            color: rgba(255,255,255,0.75);
+        }
+
+        .nav {
+            flex: 1;
+            padding: 12px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 12px;
+            border-radius: 8px;
+            color: rgba(255,255,255,0.9);
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            text-align: left;
+            width: 100%;
+            transition: background 0.15s;
+            position: relative;
+        }
+
+        .nav-item:hover { background: rgba(255,255,255,0.12); }
+
+        .nav-item.active {
+            background: white;
+            color: var(--accent);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .nav-item .emoji { font-size: 1.15em; flex-shrink: 0; }
+
+        .nav-item .key-hint {
+            margin-left: auto;
+            font-size: 0.75em;
+            font-weight: 700;
+            opacity: 0.45;
+            border: 1px solid currentColor;
+            border-radius: 4px;
+            padding: 1px 5px;
+        }
+
+        .sidebar-footer {
+            padding: 12px 16px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.72em;
+            color: rgba(255,255,255,0.6);
+        }
+
+        /* ── Main content ── */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: #f4f5fb;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            background: white;
+            border-bottom: 2px solid #e0e3f5;
+            flex-shrink: 0;
+        }
+
+        .toolbar-title {
+            font-size: 0.92em;
+            font-weight: 700;
+            color: #333;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            border-radius: 6px;
+            border: 1px solid #d5d9f0;
+            background: #f4f5fb;
+            color: var(--accent);
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+
+        .btn:hover { background: #e6e9f8; }
+
+        .frame-wrap {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+        }
+
+        .frame-wrap iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+            display: none;
+        }
+
+        .frame-wrap iframe.visible { display: block; }
+
+        .copied-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #333;
+            color: white;
+            font-size: 0.85em;
+            font-weight: 600;
+            padding: 10px 18px;
+            border-radius: 8px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+            transition: transform 0.25s ease;
+            z-index: 100;
+        }
+
+        .copied-toast.show { transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 700px) {
+            :root { --sidebar-width: 200px; }
+            .nav-item .key-hint { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="logo-area">
+                <img class="logo-img" src="https://raw.githubusercontent.com/drewshafe/si-roi-calculator/main/si_lock.png" alt="ShipInsure">
+                <div>
+                    <div class="app-title">Rep Hub</div>
+                    <div class="app-subtitle">ShipInsure Sales Tools</div>
+                </div>
+            </div>
+            <div class="nav" id="nav"></div>
+            <div class="sidebar-footer">Press 1–5 to switch tools</div>
+        </nav>
+        <div class="main">
+            <div class="toolbar">
+                <button class="btn" id="toggleSidebar" title="Toggle sidebar">☰</button>
+                <div class="toolbar-title" id="toolbarTitle"></div>
+                <button class="btn" id="reloadBtn" title="Reload tool">⟳ Reload</button>
+                <button class="btn" id="copyBtn" title="Copy tool link">🔗 Copy Link</button>
+                <a class="btn" id="openBtn" href="#" target="_blank" rel="noopener" title="Open in new tab">↗ Open in New Tab</a>
+            </div>
+            <div class="frame-wrap" id="frameWrap"></div>
+        </div>
+    </div>
+    <div class="copied-toast" id="toast">Link copied!</div>
+
+    <script>
+        const TOOLS = [
+            { id: 'roi',          emoji: '📦', name: 'ROI Calc — Rep View',        url: 'https://drewshafe.github.io/si-roi-calculator/' },
+            { id: 'proposal',     emoji: '📄', name: 'Proposal Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
+            { id: 'self-insured', emoji: '🛡️', name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/' },
+            { id: 'comparison',   emoji: '⚖️', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/' },
+            { id: 'gorgias',      emoji: '🤝', name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/' },
+        ];
+
+        const nav = document.getElementById('nav');
+        const frameWrap = document.getElementById('frameWrap');
+        const toolbarTitle = document.getElementById('toolbarTitle');
+        const openBtn = document.getElementById('openBtn');
+        const toast = document.getElementById('toast');
+        const frames = {};
+        let activeId = null;
+
+        TOOLS.forEach((tool, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'nav-item';
+            btn.id = 'nav-' + tool.id;
+            btn.innerHTML = `<span class="emoji">${tool.emoji}</span><span>${tool.name}</span><span class="key-hint">${i + 1}</span>`;
+            btn.addEventListener('click', () => activate(tool.id));
+            nav.appendChild(btn);
+        });
+
+        function activate(id, updateHash = true) {
+            const tool = TOOLS.find(t => t.id === id);
+            if (!tool || id === activeId) return;
+            activeId = id;
+
+            // Lazy-load iframe on first visit; keep it alive after (preserves entered data)
+            if (!frames[id]) {
+                const f = document.createElement('iframe');
+                f.src = tool.url;
+                f.title = tool.name;
+                frames[id] = f;
+                frameWrap.appendChild(f);
+            }
+            Object.entries(frames).forEach(([k, f]) => f.classList.toggle('visible', k === id));
+
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.id === 'nav-' + id));
+            toolbarTitle.textContent = tool.emoji + ' ' + tool.name;
+            openBtn.href = tool.url;
+            document.title = tool.name + ' · ShipInsure Rep Hub';
+            if (updateHash) history.replaceState(null, '', '#' + id);
+        }
+
+        document.getElementById('reloadBtn').addEventListener('click', () => {
+            if (activeId && frames[activeId]) frames[activeId].src = TOOLS.find(t => t.id === activeId).url;
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const tool = TOOLS.find(t => t.id === activeId);
+            if (!tool) return;
+            navigator.clipboard.writeText(tool.url).then(() => {
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 1600);
+            });
+        });
+
+        document.getElementById('toggleSidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.target.matches('input, textarea, select')) return;
+            const n = parseInt(e.key, 10);
+            if (n >= 1 && n <= TOOLS.length) activate(TOOLS[n - 1].id);
+        });
+
+        // Deep-linking: #proposal opens that tool directly
+        const initial = location.hash.replace('#', '');
+        activate(TOOLS.some(t => t.id === initial) ? initial : TOOLS[0].id, false);
+    </script>
+</body>
+</html>
