@@ -11,7 +11,7 @@
         :root {
             --header-grad: linear-gradient(135deg, #4a5fc1 0%, #6b7fd7 100%);
             --accent: #4a5fc1;
-            --sidebar-width: 250px;
+            --sidebar-width: 330px;
         }
 
         html, body { height: 100%; }
@@ -205,9 +205,86 @@
 
         .copied-toast.show { transform: translateX(-50%) translateY(0); }
 
+        /* ── ROI Master Calculator logo label ── */
+        .nav-item .nav-logo { height: 30px; width: auto; max-width: 165px; display: block; }
+        .nav-item.has-logo { padding: 12px 12px; }
+
+        /* ── REP Inputs sub-panel (drives the ROI calc iframe via postMessage) ── */
+        .rep-inputs {
+            display: none;
+            flex-direction: column;
+            gap: 9px;
+            margin: 2px 2px 8px;
+            padding: 12px 12px 14px;
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 10px;
+        }
+        .rep-inputs.show { display: flex; }
+        .ri-h {
+            font-size: 0.7em;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #c7cffb;
+        }
+        .ri-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+        .ri-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 9px;
+            font-size: 0.74em;
+            font-weight: 700;
+            border-radius: 7px;
+            border: 1px solid rgba(255,255,255,0.35);
+            background: rgba(255,255,255,0.92);
+            color: #3a3a5a;
+            cursor: pointer;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: all 0.15s;
+        }
+        .ri-toggle .dot {
+            width: 9px; height: 9px; border-radius: 50%;
+            border: 1.5px solid #b9bfe0; flex-shrink: 0; background: transparent;
+        }
+        .ri-toggle.active { background: #fff; color: var(--accent); border-color: var(--accent); box-shadow: 0 1px 6px rgba(0,0,0,0.18); }
+        .ri-toggle.active .dot { background: var(--accent); border-color: var(--accent); }
+        .ri-toggle:disabled, .ri-toggle.disabled { opacity: 0.4; cursor: not-allowed; }
+        .ri-field, .ri-sel {
+            width: 100%;
+            padding: 7px 8px;
+            font-size: 0.76em;
+            font-weight: 600;
+            border-radius: 7px;
+            border: 1px solid rgba(255,255,255,0.35);
+            background: rgba(255,255,255,0.92);
+            color: #3a3a5a;
+        }
+        .ri-field:focus, .ri-sel:focus { outline: none; border-color: #fff; background: #fff; }
+        .ri-btn-row { display: flex; gap: 7px; }
+        .ri-btn {
+            flex: 1;
+            display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 7px 8px;
+            font-size: 0.74em; font-weight: 700;
+            border-radius: 7px; border: 1px solid rgba(255,255,255,0.35);
+            background: rgba(255,255,255,0.92); color: #3a3a5a;
+            cursor: pointer; white-space: nowrap;
+        }
+        .ri-btn:hover { background: #fff; }
+        .ri-sel-row { display: flex; gap: 7px; align-items: flex-end; }
+        .ri-sel-row > div { flex: 1; min-width: 0; }
+        .ri-lbl { font-size: 0.62em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #c7cffb; margin-bottom: 3px; display: block; }
+        .ri-col { display: flex; flex-direction: column; gap: 7px; }
+
         @media (max-width: 700px) {
             :root { --sidebar-width: 200px; }
             .nav-item .key-hint { display: none; }
+            .rep-inputs { display: none !important; }
         }
     </style>
 </head>
@@ -239,7 +316,7 @@
 
     <script>
         const TOOLS = [
-            { id: 'roi',          emoji: '📦', name: 'ROI Calc — Rep View',        url: 'https://drewshafe.github.io/si-roi-calculator/' },
+            { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
             { id: 'proposal',     emoji: '📄', name: 'Proposal Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
             { id: 'widget-designer', emoji: '🎨', name: 'Widget Designer',          url: 'https://drewshafe.github.io/si-widget-designer/' },
             { id: 'self-insured', emoji: '🛡️', name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/' },
@@ -257,11 +334,100 @@
 
         TOOLS.forEach((tool, i) => {
             const btn = document.createElement('button');
-            btn.className = 'nav-item';
+            btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '');
             btn.id = 'nav-' + tool.id;
-            btn.innerHTML = `<span class="emoji">${tool.emoji}</span><span>${tool.name}</span><span class="key-hint">${i + 1}</span>`;
+            btn.innerHTML = tool.logo
+                ? `<img class="nav-logo" src="${tool.logo}" alt="${tool.name}"><span class="key-hint">${i + 1}</span>`
+                : `<span class="emoji">${tool.emoji}</span><span>${tool.name}</span><span class="key-hint">${i + 1}</span>`;
             btn.addEventListener('click', () => activate(tool.id));
             nav.appendChild(btn);
+            // The ROI Master Calculator tab has a "REP Inputs" sub-panel that drives
+            // the calculator iframe live via postMessage.
+            if (tool.id === 'roi') nav.appendChild(buildRepInputs());
+        });
+
+        // ── REP Inputs panel (mirrors the calc's ShipInsure Inputs, drives it live) ──
+        function buildRepInputs() {
+            const p = document.createElement('div');
+            p.className = 'rep-inputs';
+            p.id = 'repInputs';
+            p.innerHTML = `
+                <div class="ri-h">Rep Inputs</div>
+                <div class="ri-grid">
+                    <div class="ri-col">
+                        <button class="ri-toggle" data-feat="returns"><span class="dot"></span>Protection + Returns</button>
+                        <button class="ri-toggle" data-feat="cashback"><span class="dot"></span>Customer Cashback</button>
+                        <button class="ri-toggle" data-feat="guarantee"><span class="dot"></span>Sat/Qual Guarantee</button>
+                        <button class="ri-toggle" data-feat="returnsOffset"><span class="dot"></span>Returns Offset</button>
+                    </div>
+                    <div class="ri-col">
+                        <input class="ri-field" id="ri-merchant" placeholder="Merchant Name...">
+                        <div class="ri-btn-row">
+                            <button class="ri-btn" id="ri-save">💾 Save</button>
+                            <button class="ri-btn" id="ri-saved">📂 Saved <span id="ri-saved-count">0</span></button>
+                        </div>
+                        <button class="ri-toggle" data-feat="grossRevShare"><span class="dot"></span>Gross Rev Share</button>
+                        <button class="ri-toggle" data-feat="hideCurrentCost"><span class="dot"></span>Hide Current Cost</button>
+                    </div>
+                </div>
+                <div class="ri-sel-row">
+                    <div><span class="ri-lbl">Pricing</span><select class="ri-sel" id="ri-pricing"></select></div>
+                    <div><span class="ri-lbl">Claim Res.</span><select class="ri-sel" id="ri-claimres"></select></div>
+                    <div style="flex:0 0 auto;"><span class="ri-lbl">&nbsp;</span><button class="ri-toggle" data-feat="lockInputs" style="padding:7px 10px;"><span class="dot"></span>Lock</button></div>
+                </div>`;
+            // Feature toggles → post the desired boolean; the calc echoes back the
+            // resulting state, which syncRepInputs() reflects (handles RO exclusivity).
+            p.querySelectorAll('.ri-toggle[data-feat]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (btn.classList.contains('disabled')) return;
+                    const f = btn.dataset.feat;
+                    sendApply({ [f]: !repState[f] });
+                });
+            });
+            p.querySelector('#ri-merchant').addEventListener('input', e => sendApply({ merchantName: e.target.value }));
+            p.querySelector('#ri-save').addEventListener('click', () => sendApply({ command: 'save' }));
+            p.querySelector('#ri-saved').addEventListener('click', () => sendApply({ command: 'openSaved' }));
+            p.querySelector('#ri-pricing').addEventListener('change', e => sendApply({ pricing: e.target.value }));
+            p.querySelector('#ri-claimres').addEventListener('change', e => sendApply({ claimResolution: e.target.value }));
+            return p;
+        }
+
+        let repState = {};
+        function roiWin() { return frames['roi'] && frames['roi'].contentWindow; }
+        function sendApply(patch) {
+            const w = roiWin();
+            if (w) w.postMessage(Object.assign({ siHub: 'apply' }, patch), '*');
+        }
+        function fillSelect(sel, options, value) {
+            if (!sel || !options) return;
+            if (sel.options.length !== options.length) {
+                sel.innerHTML = options.map(o => `<option value="${o.v}">${o.t}</option>`).join('');
+            }
+            if (value != null) sel.value = value;
+        }
+        function syncRepInputs(s) {
+            const setT = (feat, on) => {
+                const b = document.querySelector(`.ri-toggle[data-feat="${feat}"]`);
+                if (b) b.classList.toggle('active', !!on);
+            };
+            setT('returns', s.returns); setT('cashback', s.cashback); setT('guarantee', s.guarantee);
+            setT('returnsOffset', s.returnsOffset); setT('grossRevShare', s.grossRevShare);
+            setT('hideCurrentCost', s.hideCurrentCost); setT('lockInputs', s.lockInputs);
+            // Returns Offset is exclusive: the calc forces returns on and cashback/
+            // guarantee off, so disable those toggles while it's active.
+            ['returns', 'cashback', 'guarantee'].forEach(f => {
+                const b = document.querySelector(`.ri-toggle[data-feat="${f}"]`);
+                if (b) b.classList.toggle('disabled', !!s.returnsOffset);
+            });
+            fillSelect(document.getElementById('ri-pricing'), s.pricingOptions, s.pricing);
+            fillSelect(document.getElementById('ri-claimres'), s.claimResOptions, s.claimResolution);
+            const m = document.getElementById('ri-merchant');
+            if (m && document.activeElement !== m && typeof s.merchantName === 'string') m.value = s.merchantName;
+            const sc = document.getElementById('ri-saved-count');
+            if (sc && s.savedCount != null) sc.textContent = s.savedCount;
+        }
+        window.addEventListener('message', e => {
+            if (e.data && e.data.siHub === 'state') { repState = e.data; syncRepInputs(e.data); }
         });
 
         function activate(id, updateHash = true) {
@@ -274,12 +440,15 @@
                 const f = document.createElement('iframe');
                 f.src = tool.url;
                 f.title = tool.name;
+                if (id === 'roi') f.addEventListener('load', () => sendApply({ command: 'requestState' }));
                 frames[id] = f;
                 frameWrap.appendChild(f);
             }
             Object.entries(frames).forEach(([k, f]) => f.classList.toggle('visible', k === id));
 
             document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.id === 'nav-' + id));
+            const rp = document.getElementById('repInputs');
+            if (rp) rp.classList.toggle('show', id === 'roi');
             toolbarTitle.textContent = tool.emoji + ' ' + tool.name;
             openBtn.href = tool.url;
             document.title = tool.name + ' · ShipInsure Rep Hub';
