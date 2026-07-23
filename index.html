@@ -316,6 +316,18 @@
         .ri-saved-date { color: #adb5bd; flex-shrink: 0; font-size: 0.9em; }
         .ri-saved-empty { padding: 10px 8px; font-size: 0.64em; color: #adb5bd; text-align: center; }
 
+        /* SI Net MRR/ARR — ShipInsure's retained cut */
+        .ri-sinet {
+            display: flex; align-items: baseline; gap: 7px;
+            margin-top: 1px; padding: 7px 9px;
+            background: rgba(255,255,255,0.16);
+            border: 1px solid rgba(255,255,255,0.28);
+            border-radius: 7px;
+        }
+        .ri-sinet-label { font-size: 0.58em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #c7cffb; }
+        .ri-sinet-val { font-size: 1em; font-weight: 800; color: #fff; margin-left: auto; }
+        .ri-sinet-margin { font-size: 0.58em; font-weight: 700; color: #b7f5c9; white-space: nowrap; }
+
         @media (max-width: 760px) {
             :root { --sidebar-width: 240px; }
             .nav-item .key-hint { display: none; }
@@ -420,6 +432,11 @@
                     <div><span class="ri-lbl">Pricing</span><select class="ri-sel" id="ri-pricing"></select></div>
                     <div><span class="ri-lbl">Claim Res.</span><select class="ri-sel" id="ri-claimres"></select></div>
                     <div style="flex:0 0 auto;"><span class="ri-lbl">&nbsp;</span><button class="ri-toggle" data-feat="lockInputs" style="padding:5px 8px;"><span class="dot"></span>Lock</button></div>
+                </div>
+                <div class="ri-sinet">
+                    <span class="ri-sinet-label" id="ri-sinet-label">SI Net MRR</span>
+                    <span class="ri-sinet-val" id="ri-sinet-val">$0</span>
+                    <span class="ri-sinet-margin" id="ri-sinet-margin">0% of premiums</span>
                 </div>`;
             // Feature toggles → post the desired boolean; the calc echoes back the
             // resulting state, which syncRepInputs() reflects (handles RO exclusivity).
@@ -509,7 +526,15 @@
             // Keep the saved list fresh if it's currently open.
             const list = document.getElementById('ri-saved-list');
             if (list && list.classList.contains('show')) renderSavedList(s.savedConfigs || []);
+            // SI Net MRR/ARR — ShipInsure's retained cut of the post-claim balance.
+            const netLabel = document.getElementById('ri-sinet-label');
+            const netVal = document.getElementById('ri-sinet-val');
+            const netMargin = document.getElementById('ri-sinet-margin');
+            if (netLabel) netLabel.textContent = (s.viewMode === 'annual') ? 'SI Net ARR' : 'SI Net MRR';
+            if (netVal) netVal.textContent = fmtMoney(s.siNet);
+            if (netMargin) netMargin.textContent = (typeof s.siNetMargin === 'number' ? s.siNetMargin.toFixed(1) : '0') + '% of premiums';
         }
+        function fmtMoney(n) { return '$' + Math.round(n || 0).toLocaleString('en-US'); }
         window.addEventListener('message', e => {
             if (e.data && e.data.siHub === 'state') { repState = e.data; syncRepInputs(e.data); }
         });
