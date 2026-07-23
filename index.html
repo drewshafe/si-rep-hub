@@ -206,7 +206,7 @@
         .copied-toast.show { transform: translateX(-50%) translateY(0); }
 
         /* ── ROI Master Calculator logo label ── */
-        .nav-item .nav-logo { height: 26px; width: auto; max-width: 155px; display: block; }
+        .nav-item .nav-logo { max-width: 190px; max-height: 40px; width: auto; height: auto; display: block; }
         .nav-item.has-logo { padding: 10px 12px; }
 
         /* ── REP Inputs sub-panel (compact; drives the ROI calc iframe via postMessage) ── */
@@ -364,11 +364,11 @@
     <script>
         const TOOLS = [
             { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
-            { id: 'proposal',     emoji: '📄', name: 'Proposal Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
-            { id: 'widget-designer', emoji: '🎨', name: 'Widget Designer',          url: 'https://drewshafe.github.io/si-widget-designer/' },
-            { id: 'self-insured', emoji: '🛡️', name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/' },
-            { id: 'comparison',   emoji: '⚖️', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/' },
-            { id: 'gorgias',      emoji: '🤝', name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/' },
+            { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   name: 'Proposal Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
+            { id: 'widget-designer', emoji: '🎨', logo: 'widget_logo.png',  name: 'Widget Designer',          url: 'https://drewshafe.github.io/si-widget-designer/' },
+            { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/' },
+            { id: 'comparison',   emoji: '⚖️', logo: 'competitor_logo.png', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/' },
+            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/' },
         ];
 
         const nav = document.getElementById('nav');
