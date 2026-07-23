@@ -429,9 +429,9 @@
                     </div>
                 </div>
                 <div class="ri-sel-row">
-                    <div><span class="ri-lbl">Pricing</span><select class="ri-sel" id="ri-pricing"></select></div>
-                    <div><span class="ri-lbl">Claim Res.</span><select class="ri-sel" id="ri-claimres"></select></div>
-                    <div style="flex:0 0 auto;"><span class="ri-lbl">&nbsp;</span><button class="ri-toggle" data-feat="lockInputs" style="padding:5px 8px;"><span class="dot"></span>Lock</button></div>
+                    <div id="ri-pricing-wrap"><span class="ri-lbl">Pricing</span><select class="ri-sel" id="ri-pricing"></select></div>
+                    <div id="ri-minp-wrap" style="flex:0 0 auto;display:none;"><span class="ri-lbl">Min $</span><input class="ri-sel" id="ri-minp" placeholder="0.00" style="width:54px;"></div>
+                    <div style="flex:2;"><span class="ri-lbl">Claim Resolution</span><select class="ri-sel" id="ri-claimres"></select></div>
                 </div>
                 <div class="ri-sinet">
                     <span class="ri-sinet-label" id="ri-sinet-label">SI Net MRR</span>
@@ -461,6 +461,7 @@
                 list.classList.toggle('show');
             });
             p.querySelector('#ri-pricing').addEventListener('change', e => sendApply({ pricing: e.target.value }));
+            p.querySelector('#ri-minp').addEventListener('input', e => sendApply({ minPremium: e.target.value }));
             p.querySelector('#ri-claimres').addEventListener('change', e => sendApply({ claimResolution: e.target.value }));
             return p;
         }
@@ -519,6 +520,11 @@
             }
             fillSelect(document.getElementById('ri-pricing'), s.pricingOptions, s.pricing);
             fillSelect(document.getElementById('ri-claimres'), s.claimResOptions, s.claimResolution);
+            // Min $ floor only shows for %-based pricing.
+            const minpWrap = document.getElementById('ri-minp-wrap');
+            const minpInput = document.getElementById('ri-minp');
+            if (minpWrap) minpWrap.style.display = (s.pricing === 'percentage') ? '' : 'none';
+            if (minpInput && document.activeElement !== minpInput && typeof s.minPremium === 'string') minpInput.value = s.minPremium;
             const m = document.getElementById('ri-merchant');
             if (m && document.activeElement !== m && typeof s.merchantName === 'string') m.value = s.merchantName;
             const sc = document.getElementById('ri-saved-count');
