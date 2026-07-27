@@ -333,6 +333,19 @@
         .ri-sinet-val { font-size: 1em; font-weight: 800; color: #fff; margin-left: auto; }
         .ri-sinet-margin { font-size: 0.58em; font-weight: 700; color: #b7f5c9; white-space: nowrap; }
 
+        /* Rep display controls */
+        .ri-disp { display: flex; flex-direction: column; gap: 4px; }
+        .ri-disp-row { display: flex; align-items: center; gap: 6px; }
+        .ri-disp-row .ri-lbl { margin-bottom: 0; flex: 0 0 52px; }
+        .ri-disp-btns { display: flex; align-items: center; gap: 4px; flex: 1; }
+        .ri-disp-btns button {
+            flex: 1; padding: 4px 6px; font-size: 0.62em; font-weight: 700;
+            border-radius: 5px; border: 1px solid rgba(255,255,255,0.35);
+            background: rgba(255,255,255,0.88); color: #3a3a5a; cursor: pointer; white-space: nowrap;
+        }
+        .ri-disp-btns button.active { background: #fff; color: var(--accent); border-color: var(--accent); }
+        .ri-disp-val { flex: 0 0 auto; font-size: 0.66em; font-weight: 800; color: #fff; min-width: 34px; text-align: center; }
+
         @media (max-width: 760px) {
             :root { --sidebar-width: 240px; }
             .nav-item .key-hint { display: none; }
@@ -446,6 +459,13 @@
                     <span class="ri-sinet-label" id="ri-sinet-label">SI Net MRR</span>
                     <span class="ri-sinet-val" id="ri-sinet-val">$0</span>
                     <span class="ri-sinet-margin" id="ri-sinet-margin">0% of premiums</span>
+                </div>
+                <div class="ri-h" style="margin-top:3px;">Display</div>
+                <div class="ri-disp">
+                    <div class="ri-disp-row"><span class="ri-lbl">Size</span><div class="ri-disp-btns"><button data-disp="zoom" data-val="dec">−</button><span id="ri-zoom-val" class="ri-disp-val">100%</span><button data-disp="zoom" data-val="inc">+</button></div></div>
+                    <div class="ri-disp-row"><span class="ri-lbl">Text</span><div class="ri-disp-btns"><button data-disp="text" data-val="0.9">S</button><button data-disp="text" data-val="1">M</button><button data-disp="text" data-val="1.15">L</button></div></div>
+                    <div class="ri-disp-row"><span class="ri-lbl">Density</span><div class="ri-disp-btns"><button data-disp="density" data-val="comfortable">Comfort</button><button data-disp="density" data-val="compact">Compact</button></div></div>
+                    <div class="ri-disp-row"><span class="ri-lbl">Layout</span><div class="ri-disp-btns"><button data-disp="layout" data-val="auto">Auto</button><button data-disp="layout" data-val="split">Split</button><button data-disp="layout" data-val="stacked">Stacked</button></div></div>
                 </div>`;
             // Feature toggles → post the desired boolean; the calc echoes back the
             // resulting state, which syncRepInputs() reflects (handles RO exclusivity).
@@ -488,6 +508,19 @@
             };
             p.querySelector('#ri-loadlink-btn').addEventListener('click', loadFromLink);
             p.querySelector('#ri-loadlink-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadFromLink(); });
+            // Display controls
+            p.querySelectorAll('.ri-disp-btns button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.disp, v = btn.dataset.val;
+                    if (t === 'zoom') {
+                        repDisplay.zoom = Math.round((Math.min(1.5, Math.max(0.7, repDisplay.zoom + (v === 'inc' ? 0.1 : -0.1)))) * 100) / 100;
+                    } else if (t === 'text') { repDisplay.textScale = parseFloat(v); }
+                    else if (t === 'density') { repDisplay.density = v; }
+                    else if (t === 'layout') { repDisplay.layout = v; }
+                    saveDisplayPrefs(); syncDisplayUI(); sendDisplay();
+                });
+            });
+            setTimeout(syncDisplayUI, 0);
             return p;
         }
 
@@ -515,6 +548,23 @@
         function sendApply(patch) {
             const w = roiWin();
             if (w) w.postMessage(Object.assign({ siHub: 'apply' }, patch), '*');
+        }
+
+        // ── Rep display prefs (size/text/density/layout), persisted per rep ──
+        function loadDisplayPrefs() {
+            const def = { zoom: 1, textScale: 1, density: 'comfortable', layout: 'auto' };
+            try { return Object.assign(def, JSON.parse(localStorage.getItem('si_rep_display') || '{}')); }
+            catch (e) { return def; }
+        }
+        let repDisplay = loadDisplayPrefs();
+        function saveDisplayPrefs() { try { localStorage.setItem('si_rep_display', JSON.stringify(repDisplay)); } catch (e) {} }
+        function sendDisplay() { const w = roiWin(); if (w) w.postMessage({ siHub: 'apply', display: repDisplay }, '*'); }
+        function syncDisplayUI() {
+            const zv = document.getElementById('ri-zoom-val');
+            if (zv) zv.textContent = Math.round(repDisplay.zoom * 100) + '%';
+            document.querySelectorAll('.ri-disp-btns button[data-disp="text"]').forEach(b => b.classList.toggle('active', parseFloat(b.dataset.val) === repDisplay.textScale));
+            document.querySelectorAll('.ri-disp-btns button[data-disp="density"]').forEach(b => b.classList.toggle('active', b.dataset.val === repDisplay.density));
+            document.querySelectorAll('.ri-disp-btns button[data-disp="layout"]').forEach(b => b.classList.toggle('active', b.dataset.val === repDisplay.layout));
         }
         function fillSelect(sel, options, value) {
             if (!sel || !options) return;
@@ -580,7 +630,7 @@
                 const f = document.createElement('iframe');
                 f.src = tool.url;
                 f.title = tool.name;
-                if (id === 'roi') f.addEventListener('load', () => sendApply({ command: 'requestState' }));
+                if (id === 'roi') f.addEventListener('load', () => { sendApply({ command: 'requestState' }); sendDisplay(); });
                 frames[id] = f;
                 frameWrap.appendChild(f);
             }
