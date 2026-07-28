@@ -381,12 +381,12 @@
 
     <script>
         const TOOLS = [
-            { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
-            { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   name: 'Proposal Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
-            { id: 'widget-designer', emoji: '🎨', logo: 'widget_logo.png',  name: 'Widget Designer',          url: 'https://drewshafe.github.io/si-widget-designer/' },
-            { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/' },
-            { id: 'comparison',   emoji: '⚖️', logo: 'competitor_logo.png', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/' },
-            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/' },
+            { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', logoLight: 'mastercalclogo_light.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
+            { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   logoLight: 'proposal_logo_light.png', name: 'Proposal Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
+            { id: 'widget-designer', emoji: '🎨', logo: 'widget_logo.png',  logoLight: 'widget_logo_light.png',   name: 'Widget Designer',          url: 'https://drewshafe.github.io/si-widget-designer/' },
+            { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        logoLight: 'diy_logo_light.png',       name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/' },
+            { id: 'comparison',   emoji: '⚖️', logo: 'competitor_logo.png', logoLight: 'competitor_logo_light.png', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/' },
+            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    logoLight: 'gorgias_logo_light.png',   name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/' },
         ];
 
         const nav = document.getElementById('nav');
@@ -402,7 +402,7 @@
             btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '');
             btn.id = 'nav-' + tool.id;
             btn.innerHTML = tool.logo
-                ? `<img class="nav-logo" src="${tool.logo}" alt="${tool.name}"><span class="key-hint">${i + 1}</span>`
+                ? `<img class="nav-logo" src="${tool.logoLight || tool.logo}" alt="${tool.name}"><span class="key-hint">${i + 1}</span>`
                 : `<span class="emoji">${tool.emoji}</span><span>${tool.name}</span><span class="key-hint">${i + 1}</span>`;
             btn.addEventListener('click', () => activate(tool.id));
             nav.appendChild(btn);
@@ -580,7 +580,7 @@
             };
             setT('returns', s.returns); setT('cashback', s.cashback); setT('guarantee', s.guarantee);
             setT('returnsOffset', s.returnsOffset); setT('grossRevShare', s.grossRevShare);
-            setT('hideCurrentCost', s.hideCurrentCost); setT('lockInputs', s.lockInputs);
+            setT('hideCurrentCost', s.hideCurrentCost);
             // Returns Offset is exclusive: the calc forces returns on and cashback/
             // guarantee off, so disable those toggles while it's active.
             ['returns', 'cashback', 'guarantee'].forEach(f => {
@@ -636,7 +636,16 @@
             }
             Object.entries(frames).forEach(([k, f]) => f.classList.toggle('visible', k === id));
 
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.id === 'nav-' + id));
+            document.querySelectorAll('.nav-item').forEach(b => {
+                const isActive = b.id === 'nav-' + id;
+                b.classList.toggle('active', isActive);
+                const img = b.querySelector('.nav-logo');
+                if (img) {
+                    const t = TOOLS.find(t => 'nav-' + t.id === b.id);
+                    const wantSrc = isActive ? t.logo : (t.logoLight || t.logo);
+                    if (img.getAttribute('src') !== wantSrc) img.src = wantSrc;
+                }
+            });
             const rp = document.getElementById('repInputs');
             if (rp) rp.classList.toggle('show', id === 'roi');
             toolbarTitle.textContent = tool.emoji + ' ' + tool.name;
@@ -652,7 +661,19 @@
         document.getElementById('copyBtn').addEventListener('click', () => {
             const tool = TOOLS.find(t => t.id === activeId);
             if (!tool) return;
-            navigator.clipboard.writeText(tool.url).then(() => {
+            // For the ROI calc, copy the merchant-facing proposal link built from the
+            // calc's own live state (which the REP Inputs sidebar drives via
+            // postMessage) rather than the bare tool URL. Same-origin iframe (both
+            // served from drewshafe.github.io), so we can call the calc's own
+            // buildMerchantLink() directly instead of round-tripping postMessage.
+            let url = tool.url;
+            if (tool.id === 'roi') {
+                try {
+                    const win = frames.roi && frames.roi.contentWindow;
+                    if (win && typeof win.buildMerchantLink === 'function') url = win.buildMerchantLink();
+                } catch (err) { /* cross-origin or not loaded yet — fall back to tool.url */ }
+            }
+            navigator.clipboard.writeText(url).then(() => {
                 toast.classList.add('show');
                 setTimeout(() => toast.classList.remove('show'), 1600);
             });
