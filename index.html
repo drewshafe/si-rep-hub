@@ -493,17 +493,22 @@
             p.querySelector('#ri-minp').addEventListener('input', e => sendApply({ minPremium: e.target.value }));
             p.querySelector('#ri-claimres').addEventListener('change', e => sendApply({ claimResolution: e.target.value }));
             // Load a pasted calculator link as the ROI tab's starting point.
+            // Always load into the rep-facing index.html (Master Calculator view),
+            // even when the pasted link is a merchant-facing proposal.html link —
+            // only the query params (the actual data) carry over, not the page.
             const loadFromLink = () => {
                 const inp = p.querySelector('#ri-loadlink-input');
-                const url = (inp.value || '').trim();
-                if (!url) return;
-                if (!/^https?:\/\/[^ ]*si-roi-calculator/i.test(url)) {
+                const raw = (inp.value || '').trim();
+                if (!raw) return;
+                if (!/^https?:\/\/[^ ]*si-roi-calculator/i.test(raw)) {
                     inp.style.borderColor = '#ff6b6b';
                     setTimeout(() => { inp.style.borderColor = ''; }, 1500);
                     return;
                 }
+                let search = '';
+                try { search = new URL(raw).search; } catch (e) { /* fall through with no query */ }
                 activate('roi');
-                if (frames['roi']) frames['roi'].src = url;
+                if (frames['roi']) frames['roi'].src = 'https://drewshafe.github.io/si-roi-calculator/' + search;
                 inp.value = '';
             };
             p.querySelector('#ri-loadlink-btn').addEventListener('click', loadFromLink);
