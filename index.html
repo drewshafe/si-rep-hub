@@ -435,22 +435,24 @@
                     <input class="ri-field" id="ri-loadlink-input" placeholder="Paste a calculator link…">
                     <button class="ri-btn" id="ri-loadlink-btn">Load</button>
                 </div>
+                <div class="ri-col" style="margin-bottom:2px;">
+                    <input class="ri-field" id="ri-merchant" placeholder="Merchant Name...">
+                    <div class="ri-btn-row">
+                        <button class="ri-btn" id="ri-save">💾 Save</button>
+                        <button class="ri-btn" id="ri-saved">📂 Saved <span id="ri-saved-count">0</span></button>
+                    </div>
+                </div>
                 <div class="ri-h">Rep Inputs</div>
                 <div class="ri-grid">
                     <div class="ri-col">
+                        <button class="ri-toggle" data-feat="hideCurrentCost"><span class="dot"></span>Hide Current Cost</button>
                         <button class="ri-toggle" data-feat="returns"><span class="dot"></span>Protection + Returns</button>
                         <button class="ri-toggle" data-feat="cashback"><span class="dot"></span>Customer Cashback</button>
-                        <button class="ri-toggle" data-feat="guarantee"><span class="dot"></span>Sat/Qual Guarantee</button>
-                        <button class="ri-toggle" data-feat="returnsOffset"><span class="dot"></span>Returns Offset</button>
                     </div>
                     <div class="ri-col">
-                        <input class="ri-field" id="ri-merchant" placeholder="Merchant Name...">
-                        <div class="ri-btn-row">
-                            <button class="ri-btn" id="ri-save">💾 Save</button>
-                            <button class="ri-btn" id="ri-saved">📂 Saved <span id="ri-saved-count">0</span></button>
-                        </div>
                         <button class="ri-toggle" data-feat="grossRevShare"><span class="dot"></span>Gross Rev Share</button>
-                        <button class="ri-toggle" data-feat="hideCurrentCost"><span class="dot"></span>Hide Current Cost</button>
+                        <button class="ri-toggle" data-feat="guarantee"><span class="dot"></span>Sat/Qual Guarantee</button>
+                        <button class="ri-toggle" data-feat="returnsOffset"><span class="dot"></span>Returns Offset</button>
                     </div>
                 </div>
                 <div class="ri-saved-list" id="ri-saved-list"></div>
