@@ -321,6 +321,20 @@
         .ri-loadlink .ri-field { flex: 1; min-width: 0; }
         .ri-loadlink .ri-btn { flex: 0 0 auto; }
 
+        /* Upfront Rev Share — rep picks a tier, no auto-suggestion */
+        .ri-upfront-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+        .ri-upfront-elig {
+            font-size: 0.56em; font-weight: 800; padding: 2px 6px; border-radius: 4px;
+            white-space: nowrap; text-transform: uppercase; letter-spacing: 0.03em;
+        }
+        .ri-upfront-elig.ok   { background: rgba(255,255,255,0.15); color: #b7f5c9; }
+        .ri-upfront-elig.warn { background: #c0392b; color: #fff; }
+        .ri-upfront-mo { font-weight: 500; opacity: 0.75; font-size: 0.9em; }
+        .ri-upfront-results { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+        .ri-upfront-row { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+        .ri-upfront-row .rl { font-size: 0.58em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #c7cffb; }
+        .ri-upfront-row .rv { font-size: 0.72em; font-weight: 800; color: #fff; }
+
         /* SI Net MRR/ARR — ShipInsure's retained cut */
         .ri-sinet {
             display: flex; align-items: baseline; gap: 7px;
@@ -455,6 +469,22 @@
                     <div id="ri-minp-wrap" style="flex:0 0 auto;display:none;"><span class="ri-lbl">Min $</span><input class="ri-sel" id="ri-minp" placeholder="0.00" style="width:54px;"></div>
                     <div style="flex:2;"><span class="ri-lbl">Claim Resolution</span><select class="ri-sel" id="ri-claimres"></select></div>
                 </div>
+                <div class="ri-upfront" id="ri-upfront">
+                    <div class="ri-upfront-head">
+                        <span class="ri-lbl">Upfront Rev Share</span>
+                        <span class="ri-upfront-elig" id="ri-upfront-elig"></span>
+                    </div>
+                    <div class="ri-cov-btns">
+                        <button class="ri-cov" data-upfront="0.20">20% <span class="ri-upfront-mo">(2.4mo)</span></button>
+                        <button class="ri-cov" data-upfront="0.25">25% <span class="ri-upfront-mo">(3.0mo)</span></button>
+                        <button class="ri-cov" data-upfront="0.33">33% <span class="ri-upfront-mo">(4.0mo)</span></button>
+                    </div>
+                    <div class="ri-upfront-results" id="ri-upfront-results" style="display:none;">
+                        <div class="ri-upfront-row"><span class="rl">Yearly Rev Share</span><span class="rv" id="ri-upfront-yearly">$0</span></div>
+                        <div class="ri-upfront-row"><span class="rl">Upfront Payment</span><span class="rv" id="ri-upfront-amount">$0</span></div>
+                        <div class="ri-upfront-row"><span class="rl">ShipInsure Margin</span><span class="rv" id="ri-upfront-margin">$0</span></div>
+                    </div>
+                </div>
                 <div class="ri-sinet">
                     <span class="ri-sinet-label" id="ri-sinet-label">SI Net MRR</span>
                     <span class="ri-sinet-val" id="ri-sinet-val">$0</span>
@@ -479,6 +509,15 @@
             // Coverage Mode buttons (rep-only; hidden from merchants) drive the calc.
             p.querySelectorAll('.ri-cov[data-cov]').forEach(btn => {
                 btn.addEventListener('click', () => sendApply({ coverage: btn.dataset.cov }));
+            });
+            // Upfront Rev Share: purely a hub-side calculator (rep picks a tier
+            // manually, no auto-suggestion) — nothing to send to the calc.
+            p.querySelectorAll('.ri-cov[data-upfront]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tier = parseFloat(btn.dataset.upfront);
+                    _upfrontTier = (_upfrontTier === tier) ? null : tier;
+                    updateUpfrontDisplay();
+                });
             });
             p.querySelector('#ri-merchant').addEventListener('input', e => sendApply({ merchantName: e.target.value }));
             p.querySelector('#ri-save').addEventListener('click', () => sendApply({ command: 'save' }));
@@ -549,6 +588,7 @@
         }
 
         let repState = {};
+        let _upfrontTier = null; // 0.20 | 0.25 | 0.33 | null — rep-picked, no auto-suggestion
         function roiWin() { return frames['roi'] && frames['roi'].contentWindow; }
         function sendApply(patch) {
             const w = roiWin();
@@ -619,8 +659,48 @@
             if (netLabel) netLabel.textContent = (s.viewMode === 'annual') ? 'SI Net ARR' : 'SI Net MRR';
             if (netVal) netVal.textContent = fmtMoney(s.siNet);
             if (netMargin) netMargin.textContent = (typeof s.siNetMargin === 'number' ? s.siNetMargin.toFixed(1) : '0') + '% of premiums';
+            updateUpfrontDisplay();
         }
         function fmtMoney(n) { return '$' + Math.round(n || 0).toLocaleString('en-US'); }
+
+        // Upfront Rev Share — lets a rep front-load part of a year's Rev Share as
+        // a lump sum in exchange for a reduced ongoing share. Tier is picked
+        // manually (no auto-suggestion); eligibility is a warning, not a block.
+        //   Yearly Rev Share = Rev Share % × annual Net Revenue
+        //   Upfront $         = Upfront Tier % × Yearly Rev Share
+        //   ShipInsure Margin = annual Net Revenue − Yearly Rev Share
+        function updateUpfrontDisplay() {
+            const s = repState || {};
+            document.querySelectorAll('.ri-cov[data-upfront]').forEach(b => {
+                b.classList.toggle('active', _upfrontTier !== null && parseFloat(b.dataset.upfront) === _upfrontTier);
+            });
+
+            const netRevPeriod = s.netRevenue || 0;
+            const isAnnual = s.viewMode === 'annual';
+            const annualNetRevenue = isAnnual ? netRevPeriod : netRevPeriod * 12;
+            const monthlyNetRevenue = isAnnual ? netRevPeriod / 12 : netRevPeriod;
+
+            const eligEl = document.getElementById('ri-upfront-elig');
+            if (eligEl) {
+                const eligible = monthlyNetRevenue >= 2500;
+                eligEl.textContent = eligible ? 'Eligible' : 'Below $2,500/mo min';
+                eligEl.className = 'ri-upfront-elig ' + (eligible ? 'ok' : 'warn');
+            }
+
+            const resultsEl = document.getElementById('ri-upfront-results');
+            if (!resultsEl) return;
+            if (_upfrontTier === null) { resultsEl.style.display = 'none'; return; }
+            resultsEl.style.display = 'flex';
+
+            const revSharePct = s.revSharePct || 0; // decimal fraction
+            const yearlyRevShare = annualNetRevenue * revSharePct;
+            const upfrontAmount = _upfrontTier * yearlyRevShare;
+            const margin = annualNetRevenue - yearlyRevShare;
+
+            document.getElementById('ri-upfront-yearly').textContent = fmtMoney(yearlyRevShare);
+            document.getElementById('ri-upfront-amount').textContent = fmtMoney(upfrontAmount);
+            document.getElementById('ri-upfront-margin').textContent = fmtMoney(margin);
+        }
         window.addEventListener('message', e => {
             if (e.data && e.data.siHub === 'state') { repState = e.data; syncRepInputs(e.data); }
         });
