@@ -209,6 +209,25 @@
         .nav-item .nav-logo { max-width: 190px; max-height: 40px; width: auto; height: auto; display: block; }
         .nav-item.has-logo { padding: 10px 12px; }
 
+        /* ── Grouped sub-tabs (Other Calculator) ── */
+        .nav-item.nav-group .group-caret {
+            margin-left: auto; font-size: 0.85em; opacity: 0.7;
+            transition: transform 0.25s ease;
+        }
+        .nav-item.nav-group .group-caret + .key-hint { margin-left: 8px; }
+        .nav-item.nav-group.expanded { background: rgba(255,255,255,0.14); }
+        .nav-item.nav-group.expanded .group-caret { transform: rotate(180deg); }
+        .nav-sub {
+            display: flex; flex-direction: column; gap: 6px;
+            max-height: 0; overflow: hidden; opacity: 0;
+            margin-left: 12px; padding-left: 8px;
+            border-left: 2px solid rgba(255,255,255,0.16);
+            transition: max-height 0.3s ease, opacity 0.25s ease, margin 0.25s ease;
+        }
+        .nav-sub.open { max-height: 320px; opacity: 1; margin-top: 3px; margin-bottom: 3px; }
+        .nav-sub-item.has-logo { padding: 8px 12px; }
+        .nav-sub-item .nav-logo { max-width: 155px; max-height: 32px; }
+
         /* ── REP Inputs sub-panel (compact; drives the ROI calc iframe via postMessage) ── */
         .rep-inputs {
             display: none;
@@ -378,7 +397,7 @@
                 </div>
             </div>
             <div class="nav" id="nav"></div>
-            <div class="sidebar-footer">Press 1–6 to switch tools</div>
+            <div class="sidebar-footer">Press 1–7 to switch tools</div>
         </nav>
         <div class="main">
             <div class="toolbar">
@@ -398,9 +417,11 @@
             { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', logoLight: 'mastercalclogo_light.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
             { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   logoLight: 'proposal_logo_light.png', name: 'Proposal & MSA Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
             { id: 'widget-designer', emoji: '🎨', logo: 'widget_logo.png',  logoLight: 'widget_logo_light.png',   name: 'Widget Designer',          url: 'https://drewshafe.github.io/si-widget-designer/' },
-            { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        logoLight: 'diy_logo_light.png',       name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/' },
-            { id: 'comparison',   emoji: '⚖️', logo: 'competitor_logo.png', logoLight: 'competitor_logo_light.png', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/' },
-            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    logoLight: 'gorgias_logo_light.png',   name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/' },
+            // "Other Calculator" is a group header — clicking it reveals the sub-tabs below.
+            { id: 'other',        emoji: '🧮', logo: 'othercalcs_logo.png', logoLight: 'othercalcs_logo_light.png', name: 'Other Calculator', group: true, children: ['self-insured', 'comparison', 'gorgias'] },
+            { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        logoLight: 'diy_logo_light.png',       name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/', parent: 'other' },
+            { id: 'comparison',   emoji: '⚖️', logo: 'competitor_logo.png', logoLight: 'competitor_logo_light.png', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/', parent: 'other' },
+            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    logoLight: 'gorgias_logo_light.png',   name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/', parent: 'other' },
         ];
 
         const nav = document.getElementById('nav');
@@ -413,16 +434,30 @@
 
         TOOLS.forEach((tool, i) => {
             const btn = document.createElement('button');
-            btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '');
+            btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '') + (tool.group ? ' nav-group' : '') + (tool.parent ? ' nav-sub-item' : '');
             btn.id = 'nav-' + tool.id;
+            const caret = tool.group ? '<span class="group-caret">▾</span>' : '';
             btn.innerHTML = tool.logo
-                ? `<img class="nav-logo" src="${tool.logoLight || tool.logo}" alt="${tool.name}"><span class="key-hint">${i + 1}</span>`
-                : `<span class="emoji">${tool.emoji}</span><span>${tool.name}</span><span class="key-hint">${i + 1}</span>`;
+                ? `<img class="nav-logo" src="${tool.logoLight || tool.logo}" alt="${tool.name}">${caret}<span class="key-hint">${i + 1}</span>`
+                : `<span class="emoji">${tool.emoji}</span><span>${tool.name}</span>${caret}<span class="key-hint">${i + 1}</span>`;
             btn.addEventListener('click', () => activate(tool.id));
-            nav.appendChild(btn);
+            if (tool.parent) {
+                // Sub-tab: nest inside its group's collapsible container.
+                const sub = document.getElementById('nav-sub-' + tool.parent);
+                if (sub) sub.appendChild(btn);
+            } else {
+                nav.appendChild(btn);
+            }
             // The ROI Master Calculator tab has a "REP Inputs" sub-panel that drives
             // the calculator iframe live via postMessage.
             if (tool.id === 'roi') nav.appendChild(buildRepInputs());
+            // A group header gets an (initially collapsed) container to hold its sub-tabs.
+            if (tool.group) {
+                const sub = document.createElement('div');
+                sub.className = 'nav-sub';
+                sub.id = 'nav-sub-' + tool.id;
+                nav.appendChild(sub);
+            }
         });
 
         // ── REP Inputs panel (mirrors the calc's ShipInsure Inputs, drives it live) ──
@@ -707,9 +742,27 @@
             if (e.data && e.data.siHub === 'state') { repState = e.data; syncRepInputs(e.data); }
         });
 
+        // A group is expanded iff the active tool is that group or one of its children.
+        function setGroupsForActive(id) {
+            TOOLS.filter(t => t.group).forEach(g => {
+                const inSection = (id === g.id) || (g.children || []).includes(id);
+                const sub  = document.getElementById('nav-sub-' + g.id);
+                const head = document.getElementById('nav-' + g.id);
+                if (sub)  sub.classList.toggle('open', inSection);
+                if (head) head.classList.toggle('expanded', inSection);
+            });
+        }
+
         function activate(id, updateHash = true) {
             const tool = TOOLS.find(t => t.id === id);
-            if (!tool || id === activeId) return;
+            if (!tool) return;
+            // Group header: reveal its sub-tabs; keep the child already active, else open the first.
+            if (tool.group) {
+                const cur = TOOLS.find(t => t.id === activeId);
+                if (cur && cur.parent === tool.id) { setGroupsForActive(activeId); return; }
+                return activate((tool.children || [])[0], updateHash);
+            }
+            if (id === activeId) { setGroupsForActive(id); return; }
             activeId = id;
 
             // Lazy-load iframe on first visit; keep it alive after (preserves entered data)
@@ -733,6 +786,7 @@
                     if (img.getAttribute('src') !== wantSrc) img.src = wantSrc;
                 }
             });
+            setGroupsForActive(id);
             const rp = document.getElementById('repInputs');
             if (rp) rp.classList.toggle('show', id === 'roi');
             toolbarTitle.textContent = tool.emoji + ' ' + tool.name;
