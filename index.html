@@ -384,6 +384,90 @@
             .nav-item .key-hint { display: none; }
             .ri-grid { grid-template-columns: 1fr; }
         }
+        /* ═══════════════ PROJECT MIDNIGHT ═══════════════
+           Vantablack grounds · holographic black-platinum modules ·
+           cinematic kintsugi-lightning input fields */
+        @keyframes pmHolo { 0%{background-position:0% 50%;} 100%{background-position:200% 50%;} }
+        @keyframes pmSheen { 0%{transform:translateX(-120%);} 100%{transform:translateX(120%);} }
+        @keyframes pmKintsugi { 0%,100%{opacity:.35;} 50%{opacity:.85;} }
+
+        body.pm { background:#040406; }
+        body.pm .main { background:radial-gradient(120% 120% at 50% 0%, #0b0b12 0%, #050508 55%, #010102 100%); }
+
+        /* Sidebar — vantablack with a slow holographic platinum wash */
+        body.pm .sidebar { background:#040407; box-shadow:6px 0 34px rgba(0,0,0,.7); border-right:1px solid rgba(212,175,55,.22); position:relative; overflow:hidden; }
+        body.pm .sidebar::before { content:''; position:absolute; inset:0; pointer-events:none; z-index:0; opacity:.10; mix-blend-mode:screen;
+            background:linear-gradient(115deg,#ff00d4,#00e6ff,#8bff9b,#ffd54a,#b06bff,#00e6ff); background-size:200% 100%; animation:pmHolo 14s linear infinite; }
+        body.pm .logo-area, body.pm .nav, body.pm .sidebar-footer { position:relative; z-index:1; }
+        body.pm .logo-area { border-bottom:1px solid rgba(212,175,55,.22); }
+        body.pm .logo-area .logo-img { filter:brightness(0) invert(1) drop-shadow(0 0 6px rgba(233,196,106,.4)); }
+        body.pm .app-title { color:#f2eede; letter-spacing:.02em; }
+        body.pm .app-subtitle { color:#8a8a9c; }
+
+        /* Nav items — black-platinum modules with a holographic hairline */
+        body.pm .nav-item { color:#d9d9e6; background:linear-gradient(150deg,#191a22 0%,#0b0c12 100%);
+            border:1px solid rgba(212,175,55,.16); box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 2px 10px rgba(0,0,0,.5); overflow:hidden; }
+        body.pm .nav-item:hover { border-color:rgba(212,175,55,.5); box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 4px 16px rgba(0,0,0,.6); background:linear-gradient(150deg,#20222c 0%,#0d0e15 100%); }
+        body.pm .nav-item.active { background:linear-gradient(150deg,#2a2b36 0%,#141520 100%); color:#f5d67b;
+            border-color:#e9c46a; box-shadow:0 0 0 1px rgba(233,196,106,.7), 0 0 22px rgba(233,196,106,.28), inset 0 1px 0 rgba(255,255,255,.08); }
+        /* platinum-monochrome logos; gold sheen on the active module */
+        body.pm .nav-logo { filter:brightness(0) invert(1) opacity(.92); }
+        body.pm .nav-item.active .nav-logo { filter:brightness(0) invert(1) sepia(1) saturate(3) hue-rotate(3deg) opacity(.95); }
+        body.pm .nav-item .key-hint { color:#e9c46a; opacity:.6; border-color:rgba(233,196,106,.4); }
+        body.pm .nav-item.active .key-hint { color:#f5d67b; opacity:.9; }
+        body.pm .nav-group.expanded { background:linear-gradient(150deg,#20212b,#0e0f16); border-color:rgba(233,196,106,.35); }
+        body.pm .nav-sub { border-left:2px solid rgba(233,196,106,.35); }
+        body.pm .sidebar-footer { border-top:1px solid rgba(212,175,55,.22); color:#8a8a9c; }
+
+        /* REP Inputs panel — deep platinum with a holographic sweep */
+        body.pm .rep-inputs { background:linear-gradient(155deg,#121319,#07070c); border:1px solid rgba(212,175,55,.22); position:relative; overflow:hidden; }
+        body.pm .rep-inputs::after { content:''; position:absolute; top:0; bottom:0; width:40%; pointer-events:none; z-index:0;
+            background:linear-gradient(100deg,transparent,rgba(233,196,106,.10),transparent); animation:pmSheen 6s ease-in-out infinite; }
+        body.pm .rep-inputs > * { position:relative; z-index:1; }
+        body.pm .ri-h, body.pm .ri-lbl { color:#c9a24a; }
+
+        /* Kintsugi-lightning input fields — vantablack fill, molten-gold seam border */
+        body.pm .ri-field, body.pm .ri-sel, body.pm .ri-toggle, body.pm .ri-btn, body.pm .ri-cov, body.pm .ri-disp-btns button {
+            color:#efe7cf;
+            background:linear-gradient(#08080e,#08080e) padding-box,
+                      linear-gradient(120deg,#3a2f10,#e9c46a 45%,#fff3c4 50%,#e9c46a 55%,#3a2f10) border-box;
+            border:1px solid transparent;
+            box-shadow:0 0 8px rgba(233,196,106,.10), inset 0 0 12px rgba(0,0,0,.6);
+        }
+        body.pm .ri-field::placeholder { color:#7c7660; }
+        body.pm .ri-field:focus, body.pm .ri-sel:focus {
+            outline:none;
+            background:linear-gradient(#0c0c14,#0c0c14) padding-box,
+                      linear-gradient(120deg,#e9c46a,#fff3c4,#e9c46a) border-box;
+            box-shadow:0 0 0 1px rgba(233,196,106,.5), 0 0 18px rgba(233,196,106,.4);
+        }
+        body.pm .ri-toggle.active, body.pm .ri-disp-btns button.active { color:#0a0a0a;
+            background:linear-gradient(120deg,#e9c46a,#fff3c4) padding-box, linear-gradient(120deg,#e9c46a,#fff3c4) border-box; }
+        body.pm .ri-toggle .dot { border-color:#8a7a3a; }
+        body.pm .ri-toggle.active .dot { background:#0a0a0a; border-color:#0a0a0a; }
+        body.pm .ri-cov.active { background:linear-gradient(120deg,#b8860b,#e9c46a) padding-box, linear-gradient(120deg,#e9c46a,#fff3c4) border-box; color:#0a0a0a; }
+        body.pm .ri-sinet { background:linear-gradient(150deg,#161018,#0a0a10); border:1px solid rgba(233,196,106,.3); }
+        body.pm .ri-sinet-val { color:#f5d67b; }
+        body.pm .ri-sinet-margin { color:#b7f5c9; }
+        body.pm .ri-saved-list { background:#0c0c14; border:1px solid rgba(233,196,106,.3); }
+        body.pm .ri-saved-item { color:#e7e2d2; border-bottom:1px solid rgba(233,196,106,.12); }
+        body.pm .ri-saved-item:hover { background:#161018; }
+
+        /* Toolbar / chrome */
+        body.pm .toolbar { background:#07070d; border-bottom:1px solid rgba(212,175,55,.25); }
+        body.pm .toolbar-title { color:#efe7cf; }
+        body.pm .btn { background:linear-gradient(150deg,#191a22,#0b0c12); color:#e9c46a; border:1px solid rgba(233,196,106,.35); }
+        body.pm .btn:hover { background:linear-gradient(150deg,#22232d,#0d0e15); box-shadow:0 0 14px rgba(233,196,106,.25); }
+
+        /* Project Midnight toggle switch */
+        .sidebar-footer { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .pm-switch { display:inline-flex; align-items:center; gap:7px; cursor:pointer; font-size:1em; font-weight:700; color:rgba(255,255,255,.75); white-space:nowrap; }
+        .pm-switch input { display:none; }
+        .pm-track { width:34px; height:18px; border-radius:10px; background:rgba(255,255,255,.28); position:relative; flex-shrink:0; transition:background .25s; }
+        .pm-track::after { content:''; position:absolute; left:2px; top:2px; width:14px; height:14px; border-radius:50%; background:#fff; transition:transform .22s, box-shadow .25s; }
+        .pm-switch input:checked + .pm-track { background:linear-gradient(120deg,#b8860b,#e9c46a,#fff3c4); }
+        .pm-switch input:checked + .pm-track::after { transform:translateX(16px); background:#0a0a0a; box-shadow:0 0 10px rgba(233,196,106,.8); }
+        body.pm .pm-switch { color:#e9c46a; }
     </style>
 </head>
 <body>
@@ -397,7 +481,13 @@
                 </div>
             </div>
             <div class="nav" id="nav"></div>
-            <div class="sidebar-footer">Press 1–7 to switch tools</div>
+            <div class="sidebar-footer">
+                <span>Press 1–7 to switch tools</span>
+                <label class="pm-switch" title="Project Midnight">
+                    <input type="checkbox" id="pmToggle" onchange="toggleMidnight(this.checked)">
+                    <span class="pm-track"></span> Project Midnight
+                </label>
+            </div>
         </nav>
         <div class="main">
             <div class="toolbar">
@@ -833,6 +923,19 @@
         // Deep-linking: #proposal opens that tool directly
         const initial = location.hash.replace('#', '');
         activate(TOOLS.some(t => t.id === initial) ? initial : TOOLS[0].id, false);
+
+        // ── Project Midnight theme (persisted per rep) ──
+        function toggleMidnight(on) {
+            document.body.classList.toggle('pm', on);
+            try { localStorage.setItem('si_project_midnight', on ? '1' : '0'); } catch (e) {}
+        }
+        (function initMidnight() {
+            let on = false;
+            try { on = localStorage.getItem('si_project_midnight') === '1'; } catch (e) {}
+            const cb = document.getElementById('pmToggle');
+            if (cb) cb.checked = on;
+            document.body.classList.toggle('pm', on);
+        })();
     </script>
 </body>
 </html>
