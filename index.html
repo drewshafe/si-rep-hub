@@ -843,6 +843,8 @@
             });
         }
 
+        function _pmActive() { return document.body.classList.contains('pm'); }
+        function _withTheme(url) { return _pmActive() ? url + (url.includes('?') ? '&' : '?') + 'theme=midnight' : url; }
         function activate(id, updateHash = true) {
             const tool = TOOLS.find(t => t.id === id);
             if (!tool) return;
@@ -858,9 +860,9 @@
             // Lazy-load iframe on first visit; keep it alive after (preserves entered data)
             if (!frames[id]) {
                 const f = document.createElement('iframe');
-                f.src = tool.url;
+                f.src = _withTheme(tool.url);
                 f.title = tool.name;
-                if (id === 'roi') f.addEventListener('load', () => { sendApply({ command: 'requestState' }); sendDisplay(); });
+                if (id === 'roi') f.addEventListener('load', () => { sendApply({ command: 'requestState' }); sendDisplay(); sendApply({ theme: _pmActive() ? 'midnight' : 'default' }); });
                 frames[id] = f;
                 frameWrap.appendChild(f);
             }
@@ -928,6 +930,8 @@
         function toggleMidnight(on) {
             document.body.classList.toggle('pm', on);
             try { localStorage.setItem('si_project_midnight', on ? '1' : '0'); } catch (e) {}
+            // Match every loaded tool iframe (roi themes live; others when they support it).
+            Object.values(frames).forEach(f => { try { f.contentWindow.postMessage({ siHub: 'apply', theme: on ? 'midnight' : 'default' }, '*'); } catch (e) {} });
         }
         (function initMidnight() {
             let on = false;
