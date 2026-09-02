@@ -596,6 +596,19 @@
                     <div id="ri-minp-wrap" style="flex:0 0 auto;display:none;"><span class="ri-lbl">Min $</span><input class="ri-sel" id="ri-minp" placeholder="0.00" style="width:54px;"></div>
                     <div style="flex:2;"><span class="ri-lbl">Claim Resolution</span><select class="ri-sel" id="ri-claimres"></select></div>
                 </div>
+                <div class="ri-sel-row" style="margin-bottom:2px;">
+                    <div style="flex:1;"><span class="ri-lbl">Currency</span>
+                        <select class="ri-sel" id="ri-currency">
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="CAD">CAD (CA$)</option>
+                            <option value="AUD">AUD (A$)</option>
+                            <option value="NZD">NZD (NZ$)</option>
+                            <option value="JPY">JPY (¥)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="ri-upfront" id="ri-upfront">
                     <div class="ri-upfront-head">
                         <span class="ri-lbl">Upfront Rev Share</span>
@@ -646,6 +659,7 @@
                     updateUpfrontDisplay();
                 });
             });
+            p.querySelector('#ri-currency').addEventListener('change', e => sendApply({ currency: e.target.value }));
             p.querySelector('#ri-merchant').addEventListener('input', e => sendApply({ merchantName: e.target.value }));
             p.querySelector('#ri-save').addEventListener('click', () => sendApply({ command: 'save' }));
             // Saved: rep-only. Toggle an in-sidebar, scrollable list of saved merchant
@@ -765,6 +779,8 @@
                 cov.classList.toggle('show', !!(s.returns || s.returnsOffset));
                 cov.querySelectorAll('.ri-cov').forEach(b => b.classList.toggle('active', b.dataset.cov === s.coverage));
             }
+            const _curSel = document.getElementById('ri-currency');
+            if (_curSel && document.activeElement !== _curSel && s.currency) _curSel.value = s.currency;
             fillSelect(document.getElementById('ri-pricing'), s.pricingOptions, s.pricing);
             fillSelect(document.getElementById('ri-claimres'), s.claimResOptions, s.claimResolution);
             // Min $ floor only shows for %-based pricing.
