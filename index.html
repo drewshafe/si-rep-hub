@@ -615,7 +615,7 @@
                         <span class="ri-upfront-elig" id="ri-upfront-elig"></span>
                     </div>
                     <div class="ri-cov-btns">
-                        <button class="ri-cov" data-upfront="0.20">20% <span class="ri-upfront-mo">(2.4mo)</span></button>
+                        <button class="ri-cov" data-upfront="0.208333">20.8% <span class="ri-upfront-mo">(2.5mo)</span></button>
                         <button class="ri-cov" data-upfront="0.25">25% <span class="ri-upfront-mo">(3.0mo)</span></button>
                         <button class="ri-cov" data-upfront="0.33">33% <span class="ri-upfront-mo">(4.0mo)</span></button>
                     </div>
@@ -657,6 +657,9 @@
                     const tier = parseFloat(btn.dataset.upfront);
                     _upfrontTier = (_upfrontTier === tier) ? null : tier;
                     updateUpfrontDisplay();
+                    // Mirror the selection into the calc so it shows the "Upfront Rev
+                    // Share Payment" bubble and carries ?upf= into shared links.
+                    sendApply({ upfrontTier: _upfrontTier });
                 });
             });
             p.querySelector('#ri-currency').addEventListener('change', e => sendApply({ currency: e.target.value }));
@@ -687,6 +690,11 @@
                 }
                 let search = '';
                 try { search = new URL(raw).search; } catch (e) { /* fall through with no query */ }
+                // Reflect an Upfront Rev Share tier carried in the link into the sidebar.
+                try {
+                    const upf = new URLSearchParams(search).get('upf');
+                    _upfrontTier = upf ? parseFloat(upf) : null;
+                } catch (e) { _upfrontTier = null; }
                 activate('roi');
                 if (frames['roi']) frames['roi'].src = 'https://drewshafe.github.io/si-roi-calculator/' + search;
                 inp.value = '';
