@@ -487,6 +487,18 @@
 
         /* Reduced motion: no lock spin */
         @media (prefers-reduced-motion: reduce) { .logo-img.spinning, .logo-img.egg-spin { animation: none; } }
+
+        /* Preview Designer logos are single (dark) variants — lighten them on the dark
+           sidebar and reveal the full dark logo only once the tab is active/expanded,
+           matching the light→dark behavior of the other tabs. */
+        #nav-preview .nav-logo,
+        #nav-widget-designer .nav-logo,
+        #nav-email-automation .nav-logo,
+        #nav-claim-wizard .nav-logo { filter: brightness(0) invert(1); transition: filter .18s ease; }
+        #nav-preview.expanded .nav-logo,
+        #nav-widget-designer.active .nav-logo,
+        #nav-email-automation.active .nav-logo,
+        #nav-claim-wizard.active .nav-logo { filter: none; }
     </style>
 </head>
 <body>
