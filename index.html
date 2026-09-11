@@ -531,7 +531,11 @@
         const TOOLS = [
             { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', logoLight: 'mastercalclogo_light.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
             { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   logoLight: 'proposal_logo_light.png', name: 'Proposal & MSA Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
-            { id: 'widget-designer', emoji: '🎨', logo: 'widget_logo.png',  logoLight: 'widget_logo_light.png',   name: 'Widget Designer',          url: 'https://drewshafe.github.io/si-widget-designer/' },
+            // "Preview Designer" is a group header — clicking it reveals its sub-tabs below.
+            { id: 'preview',      emoji: '🎨', logo: 'previewdesigner_logo.png', logoLight: 'previewdesigner_logo.png', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard'] },
+            { id: 'widget-designer',   emoji: '🛒', logo: 'checkoutexp_logo.png',   logoLight: 'checkoutexp_logo.png',   name: 'Checkout Experience', url: 'https://drewshafe.github.io/si-widget-designer/',   parent: 'preview' },
+            { id: 'email-automation',  emoji: '✉️', logo: 'emailbranding_logo.png',  logoLight: 'emailbranding_logo.png',  name: 'Email Automation',    url: 'https://drewshafe.github.io/si-email-automation/', parent: 'preview' },
+            { id: 'claim-wizard',      emoji: '🪄', logo: 'claimwiz_logo.png',       logoLight: 'claimwiz_logo.png',       name: 'Claim Wizard',        url: 'https://drewshafe.github.io/si-claim-wizard/',     parent: 'preview' },
             // "Other Calculator" is a group header — clicking it reveals the sub-tabs below.
             { id: 'other',        emoji: '🧮', logo: 'othercalcs_logo.png', logoLight: 'othercalcs_logo_light.png', name: 'Other Calculator', group: true, children: ['self-insured', 'comparison', 'gorgias'] },
             { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        logoLight: 'diy_logo_light.png',       name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/', parent: 'other' },
