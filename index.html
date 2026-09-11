@@ -488,17 +488,10 @@
         /* Reduced motion: no lock spin */
         @media (prefers-reduced-motion: reduce) { .logo-img.spinning, .logo-img.egg-spin { animation: none; } }
 
-        /* Preview Designer logos are single (dark) variants — lighten them on the dark
-           sidebar and reveal the full dark logo only once the tab is active/expanded,
-           matching the light→dark behavior of the other tabs. */
-        #nav-preview .nav-logo,
-        #nav-widget-designer .nav-logo,
-        #nav-email-automation .nav-logo,
-        #nav-claim-wizard .nav-logo { filter: brightness(0) invert(1); transition: filter .18s ease; }
-        #nav-preview.expanded .nav-logo,
-        #nav-widget-designer.active .nav-logo,
-        #nav-email-automation.active .nav-logo,
-        #nav-claim-wizard.active .nav-logo { filter: none; }
+        /* "Preview Designer" group header renders as text: light on the dark sidebar,
+           switching to the dark (active) treatment only once its section is open —
+           matching the other tabs' light→dark-on-click behavior. */
+        #nav-preview.expanded { background: white; color: var(--accent); }
     </style>
 </head>
 <body>
@@ -544,7 +537,7 @@
             { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', logoLight: 'mastercalclogo_light.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
             { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   logoLight: 'proposal_logo_light.png', name: 'Proposal & MSA Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
             // "Preview Designer" is a group header — clicking it reveals its sub-tabs below.
-            { id: 'preview',      emoji: '🎨', logo: 'previewdesigner_logo.png', logoLight: 'previewdesigner_logo.png', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard'] },
+            { id: 'preview',      emoji: '🎨', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard'] },
             { id: 'widget-designer',   emoji: '🛒', logo: 'checkoutexp_logo.png',   logoLight: 'checkoutexp_logo.png',   name: 'Checkout Experience', url: 'https://drewshafe.github.io/si-widget-designer/',   parent: 'preview' },
             { id: 'email-automation',  emoji: '✉️', logo: 'emailbranding_logo.png',  logoLight: 'emailbranding_logo.png',  name: 'Email Automation',    url: 'https://drewshafe.github.io/si-email-automation/', parent: 'preview' },
             { id: 'claim-wizard',      emoji: '🪄', logo: 'claimwiz_logo.png',       logoLight: 'claimwiz_logo.png',       name: 'Claim Wizard',        url: 'https://drewshafe.github.io/si-claim-wizard/',     parent: 'preview' },
