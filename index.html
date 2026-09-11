@@ -537,7 +537,7 @@
             { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', logoLight: 'mastercalclogo_light.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
             { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   logoLight: 'proposal_logo_light.png', name: 'Proposal & MSA Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
             // "Preview Designer" is a group header — clicking it reveals its sub-tabs below.
-            { id: 'preview',      emoji: '🎨', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard'] },
+            { id: 'preview',      emoji: '🎨', logo: 'previewdesigner_logo.png', logoLight: 'previewdesigner_logo_light.png', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard'] },
             { id: 'widget-designer',   emoji: '🛒', logo: 'checkoutexp_logo.png',   logoLight: 'checkoutexp_logo.png',   name: 'Checkout Experience', url: 'https://drewshafe.github.io/si-widget-designer/',   parent: 'preview' },
             { id: 'email-automation',  emoji: '✉️', logo: 'emailbranding_logo.png',  logoLight: 'emailbranding_logo.png',  name: 'Email Automation',    url: 'https://drewshafe.github.io/si-email-automation/', parent: 'preview' },
             { id: 'claim-wizard',      emoji: '🪄', logo: 'claimwiz_logo.png',       logoLight: 'claimwiz_logo.png',       name: 'Claim Wizard',        url: 'https://drewshafe.github.io/si-claim-wizard/',     parent: 'preview' },
@@ -933,7 +933,10 @@
                 const img = b.querySelector('.nav-logo');
                 if (img) {
                     const t = TOOLS.find(t => 'nav-' + t.id === b.id);
-                    const wantSrc = isActive ? t.logo : (t.logoLight || t.logo);
+                    // Preview Designer is a group header (never "active"); show its dark
+                    // logo whenever its section is open, matching the other tabs' light→dark.
+                    const previewOpen = t && t.id === 'preview' && ((t.children || []).includes(id) || id === 'preview');
+                    const wantSrc = (isActive || previewOpen) ? t.logo : (t.logoLight || t.logo);
                     if (img.getAttribute('src') !== wantSrc) img.src = wantSrc;
                 }
             });
