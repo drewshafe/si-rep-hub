@@ -554,11 +554,10 @@
             { id: 'widget-designer',   emoji: '🛒', logo: 'checkoutexp_logo.png',   logoLight: 'checkoutexp_logo.png',   name: 'Checkout Experience', url: 'https://drewshafe.github.io/si-widget-designer/',   parent: 'preview' },
             { id: 'email-automation',  emoji: '✉️', logo: 'emailbranding_logo.png',  logoLight: 'emailbranding_logo.png',  name: 'Email Automation',    url: 'https://drewshafe.github.io/si-email-automation/', parent: 'preview' },
             { id: 'claim-wizard',      emoji: '🪄', logo: 'claimwiz_logo.png',       logoLight: 'claimwiz_logo.png',       name: 'Claim Wizard',        url: 'https://drewshafe.github.io/si-claim-wizard/',     parent: 'preview' },
-            // "Other Calculator" is a group header — clicking it reveals the sub-tabs below.
-            { id: 'other',        emoji: '🧮', logo: 'othercalcs_logo.png', logoLight: 'othercalcs_logo_light.png', name: 'Other Calculator', group: true, children: ['self-insured', 'comparison', 'gorgias'] },
-            { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        logoLight: 'diy_logo_light.png',       name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/', parent: 'other' },
-            { id: 'comparison',   emoji: '⚖️', logo: 'competitor_logo.png', logoLight: 'competitor_logo_light.png', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/', parent: 'other' },
-            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    logoLight: 'gorgias_logo_light.png',   name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/', parent: 'other' },
+            // Other calculators — flat top-level buttons (no dropdown group).
+            { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        logoLight: 'diy_logo_light.png',       name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/' },
+            { id: 'comparison',   emoji: '⚖️', logo: 'competitor_logo.png', logoLight: 'competitor_logo_light.png', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/' },
+            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    logoLight: 'gorgias_logo_light.png',   name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/' },
         ];
 
         const nav = document.getElementById('nav');
