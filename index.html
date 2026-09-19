@@ -240,6 +240,19 @@
             border-radius: 9px;
         }
         .rep-inputs.show { display: flex; }
+        /* Sub-tab nav (Coverage / Saved Calcs / Display) */
+        .ri-subnav { display: flex; gap: 4px; margin: 2px 0 3px; }
+        .ri-subtab { flex: 1; font-size: 0.58em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+            padding: 6px 3px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.22); background: rgba(255,255,255,0.08);
+            color: #dfe3fb; cursor: pointer; font-family: inherit; transition: all 0.12s; }
+        .ri-subtab:hover { background: rgba(255,255,255,0.16); }
+        .ri-subtab.active { background: #fff; color: var(--accent); border-color: #fff; }
+        .ri-pane { display: none; flex-direction: column; gap: 6px; }
+        .ri-pane.active { display: flex; }
+        .ri-saved-list.ri-saved-pane { display: block; max-height: 340px; }
+        .ri-cov.ri-cov-noprotect.active { background: #b0392b; border-color: #b0392b; }
+        body.pm .ri-subtab { background: linear-gradient(150deg,#191a22,#0b0c12); color: #d9d9e6; border-color: rgba(212,175,55,.3); }
+        body.pm .ri-subtab.active { background: linear-gradient(150deg,#2a2b36,#141520); color: #f5d67b; border-color: rgba(233,196,106,.6); }
         .ri-h {
             font-size: 0.6em;
             font-weight: 800;
@@ -594,55 +607,63 @@
                     <input class="ri-field" id="ri-loadlink-input" placeholder="Paste a calculator link…">
                     <button class="ri-btn" id="ri-loadlink-btn">Load</button>
                 </div>
-                <div class="ri-col" style="margin-bottom:2px;">
+                <div class="ri-col" style="margin-bottom:4px;">
                     <input class="ri-field" id="ri-merchant" placeholder="Merchant Name...">
                     <div class="ri-btn-row">
                         <button class="ri-btn" id="ri-save">💾 Save</button>
                         <button class="ri-btn" id="ri-saved">📂 Saved <span id="ri-saved-count">0</span></button>
                     </div>
                 </div>
-                <div class="ri-h">Rep Inputs</div>
-                <div class="ri-grid">
-                    <div class="ri-col">
-                        <button class="ri-toggle" data-feat="hideCurrentCost"><span class="dot"></span>Hide Current Cost</button>
-                        <button class="ri-toggle" data-feat="returns"><span class="dot"></span>Protection + Returns</button>
-                        <button class="ri-toggle" data-feat="cashback"><span class="dot"></span>Customer Cashback</button>
-                    </div>
-                    <div class="ri-col">
-                        <button class="ri-toggle" data-feat="grossRevShare"><span class="dot"></span>Gross Rev Share</button>
-                        <button class="ri-toggle" data-feat="guarantee"><span class="dot"></span>Sat/Qual Guarantee</button>
-                        <button class="ri-toggle" data-feat="returnsOffset"><span class="dot"></span>Returns Offset</button>
-                    </div>
+                <div class="ri-subnav">
+                    <button class="ri-subtab active" data-pane="coverage">Coverage</button>
+                    <button class="ri-subtab" data-pane="saved">Saved Calcs</button>
+                    <button class="ri-subtab" data-pane="display">Display</button>
                 </div>
-                <div class="ri-saved-list" id="ri-saved-list"></div>
-                <div class="ri-coverage" id="ri-coverage">
-                    <span class="ri-lbl">Coverage Mode</span>
-                    <div class="ri-cov-btns">
-                        <button class="ri-cov" data-cov="default">Protected + Platform</button>
-                        <button class="ri-cov" data-cov="platform_only">Platform Only</button>
-                        <button class="ri-cov" data-cov="labels_protected">Protected Labels</button>
-                        <button class="ri-cov" data-cov="all_labels_platform">All + Platform</button>
-                        <button class="ri-cov" data-cov="all_labels">All Labels</button>
+                <!-- Pane: Coverage (Plan Options + Pricing) -->
+                <div class="ri-pane active" data-pane="coverage">
+                    <div class="ri-h">Plan Options</div>
+                    <div class="ri-grid">
+                        <div class="ri-col">
+                            <button class="ri-toggle" data-feat="returns"><span class="dot"></span>Protection + Returns</button>
+                            <button class="ri-toggle" data-feat="cashback"><span class="dot"></span>Customer Cashback</button>
+                            <button class="ri-toggle" data-feat="hideCurrentCost"><span class="dot"></span>Hide Current Cost</button>
+                        </div>
+                        <div class="ri-col">
+                            <button class="ri-toggle" data-feat="guarantee"><span class="dot"></span>Sat/Qual Guarantee</button>
+                            <button class="ri-toggle" data-feat="grossRevShare"><span class="dot"></span>Gross Rev Share</button>
+                        </div>
                     </div>
-                </div>
-                <div class="ri-sel-row">
-                    <div id="ri-pricing-wrap"><span class="ri-lbl">Pricing</span><select class="ri-sel" id="ri-pricing"></select></div>
-                    <div id="ri-minp-wrap" style="flex:0 0 auto;display:none;"><span class="ri-lbl">Min $</span><input class="ri-sel" id="ri-minp" placeholder="0.00" style="width:54px;"></div>
-                    <div style="flex:2;"><span class="ri-lbl">Claim Resolution</span><select class="ri-sel" id="ri-claimres"></select></div>
-                </div>
-                <div class="ri-sel-row" style="margin-bottom:2px;">
-                    <div style="flex:1;"><span class="ri-lbl">Currency</span>
-                        <select class="ri-sel" id="ri-currency">
-                            <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                            <option value="CAD">CAD (CA$)</option>
-                            <option value="AUD">AUD (A$)</option>
-                            <option value="NZD">NZD (NZ$)</option>
-                            <option value="JPY">JPY (¥)</option>
-                        </select>
+                    <div class="ri-coverage" id="ri-coverage">
+                        <span class="ri-lbl">Coverage Mode</span>
+                        <div class="ri-cov-btns">
+                            <button class="ri-cov" data-cov="default">Protected + Platform</button>
+                            <button class="ri-cov" data-cov="all_labels_platform">All + Platform</button>
+                            <button class="ri-cov" data-cov="labels_protected">Protected Labels</button>
+                            <button class="ri-cov" data-cov="all_labels">All Labels</button>
+                            <button class="ri-cov" data-cov="platform_only">Platform Only</button>
+                            <button class="ri-cov ri-cov-noprotect" data-noprotect="1">No Protection</button>
+                        </div>
                     </div>
-                </div>
+                    <div class="ri-h">Pricing</div>
+                    <div class="ri-sel-row">
+                        <div id="ri-pricing-wrap" style="flex:2;"><span class="ri-lbl">Template</span><select class="ri-sel" id="ri-pricing"></select></div>
+                        <div id="ri-minp-wrap" style="flex:0 0 auto;display:none;"><span class="ri-lbl">Min $</span><input class="ri-sel" id="ri-minp" placeholder="0.00" style="width:52px;"></div>
+                        <div id="ri-limit-wrap" style="flex:0 0 auto;"><span class="ri-lbl">Limit $</span><input class="ri-sel" id="ri-limit" placeholder="none" style="width:58px;"></div>
+                    </div>
+                    <div class="ri-sel-row">
+                        <div style="flex:1;"><span class="ri-lbl">Currency</span>
+                            <select class="ri-sel" id="ri-currency">
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                                <option value="GBP">GBP (£)</option>
+                                <option value="CAD">CAD (CA$)</option>
+                                <option value="AUD">AUD (A$)</option>
+                                <option value="NZD">NZD (NZ$)</option>
+                                <option value="JPY">JPY (¥)</option>
+                            </select>
+                        </div>
+                        <div style="flex:1.4;"><span class="ri-lbl">Claim Resolution</span><select class="ri-sel" id="ri-claimres"></select></div>
+                    </div>
                 <div class="ri-upfront" id="ri-upfront">
                     <div class="ri-upfront-head">
                         <span class="ri-lbl">Upfront Rev Share</span>
@@ -659,18 +680,34 @@
                         <div class="ri-upfront-row"><span class="rl">ShipInsure Margin</span><span class="rv" id="ri-upfront-margin">$0</span></div>
                     </div>
                 </div>
-                <div class="ri-sinet">
-                    <span class="ri-sinet-label" id="ri-sinet-label">SI Net MRR</span>
-                    <span class="ri-sinet-val" id="ri-sinet-val">$0</span>
-                    <span class="ri-sinet-margin" id="ri-sinet-margin">0% of premiums</span>
+                    <div class="ri-sinet">
+                        <span class="ri-sinet-label" id="ri-sinet-label">SI Net MRR</span>
+                        <span class="ri-sinet-val" id="ri-sinet-val">$0</span>
+                        <span class="ri-sinet-margin" id="ri-sinet-margin">0% of premiums</span>
+                    </div>
+                </div><!-- /pane coverage -->
+                <!-- Pane: Saved Calcs -->
+                <div class="ri-pane" data-pane="saved">
+                    <div class="ri-saved-list ri-saved-pane" id="ri-saved-list"></div>
                 </div>
-                <div class="ri-h" style="margin-top:3px;">Display</div>
-                <div class="ri-disp">
-                    <div class="ri-disp-row"><span class="ri-lbl">Size</span><div class="ri-disp-btns"><button data-disp="zoom" data-val="dec">−</button><span id="ri-zoom-val" class="ri-disp-val">100%</span><button data-disp="zoom" data-val="inc">+</button></div></div>
-                    <div class="ri-disp-row"><span class="ri-lbl">Text</span><div class="ri-disp-btns"><button data-disp="text" data-val="0.9">S</button><button data-disp="text" data-val="1">M</button><button data-disp="text" data-val="1.15">L</button></div></div>
-                    <div class="ri-disp-row"><span class="ri-lbl">Density</span><div class="ri-disp-btns"><button data-disp="density" data-val="comfortable">Comfort</button><button data-disp="density" data-val="compact">Compact</button></div></div>
-                    <div class="ri-disp-row"><span class="ri-lbl">Layout</span><div class="ri-disp-btns"><button data-disp="layout" data-val="auto">Auto</button><button data-disp="layout" data-val="split">Split</button><button data-disp="layout" data-val="stacked">Stacked</button></div></div>
+                <!-- Pane: Display -->
+                <div class="ri-pane" data-pane="display">
+                    <div class="ri-disp">
+                        <div class="ri-disp-row"><span class="ri-lbl">Size</span><div class="ri-disp-btns"><button data-disp="zoom" data-val="dec">−</button><span id="ri-zoom-val" class="ri-disp-val">100%</span><button data-disp="zoom" data-val="inc">+</button></div></div>
+                        <div class="ri-disp-row"><span class="ri-lbl">Text</span><div class="ri-disp-btns"><button data-disp="text" data-val="0.9">S</button><button data-disp="text" data-val="1">M</button><button data-disp="text" data-val="1.15">L</button></div></div>
+                        <div class="ri-disp-row"><span class="ri-lbl">Density</span><div class="ri-disp-btns"><button data-disp="density" data-val="comfortable">Comfort</button><button data-disp="density" data-val="compact">Compact</button></div></div>
+                        <div class="ri-disp-row"><span class="ri-lbl">Layout</span><div class="ri-disp-btns"><button data-disp="layout" data-val="auto">Auto</button><button data-disp="layout" data-val="split">Split</button><button data-disp="layout" data-val="stacked">Stacked</button></div></div>
+                    </div>
                 </div>`;
+            // Sub-tab switching (Coverage / Saved Calcs / Display)
+            p.querySelectorAll('.ri-subtab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const pane = tab.dataset.pane;
+                    p.querySelectorAll('.ri-subtab').forEach(t => t.classList.toggle('active', t === tab));
+                    p.querySelectorAll('.ri-pane').forEach(pn => pn.classList.toggle('active', pn.dataset.pane === pane));
+                    if (pane === 'saved') renderSavedList(repState.savedConfigs || []);
+                });
+            });
             // Feature toggles → post the desired boolean; the calc echoes back the
             // resulting state, which syncRepInputs() reflects (handles RO exclusivity).
             p.querySelectorAll('.ri-toggle[data-feat]').forEach(btn => {
@@ -680,10 +717,13 @@
                     sendApply({ [f]: !repState[f] });
                 });
             });
-            // Coverage Mode buttons (rep-only; hidden from merchants) drive the calc.
+            // Coverage Mode buttons drive the calc. The 5 protection modes set the
+            // coverage and ensure we're not in the returns-only lens; "No Protection"
+            // is that lens (the calc's returns-offset mode).
             p.querySelectorAll('.ri-cov[data-cov]').forEach(btn => {
-                btn.addEventListener('click', () => sendApply({ coverage: btn.dataset.cov }));
+                btn.addEventListener('click', () => sendApply({ coverage: btn.dataset.cov, returnsOffset: false }));
             });
+            p.querySelector('.ri-cov-noprotect').addEventListener('click', () => sendApply({ returnsOffset: true }));
             // Upfront Rev Share: purely a hub-side calculator (rep picks a tier
             // manually, no auto-suggestion) — nothing to send to the calc.
             p.querySelectorAll('.ri-cov[data-upfront]').forEach(btn => {
@@ -701,13 +741,14 @@
             p.querySelector('#ri-save').addEventListener('click', () => sendApply({ command: 'save' }));
             // Saved: rep-only. Toggle an in-sidebar, scrollable list of saved merchant
             // configs; clicking one loads it into the calc.
+            // "Saved" jumps to the Saved Calcs sub-tab (its full pane).
             p.querySelector('#ri-saved').addEventListener('click', () => {
-                const list = document.getElementById('ri-saved-list');
-                renderSavedList(repState.savedConfigs || []);
-                list.classList.toggle('show');
+                const tab = p.querySelector('.ri-subtab[data-pane="saved"]');
+                if (tab) tab.click();
             });
             p.querySelector('#ri-pricing').addEventListener('change', e => sendApply({ pricing: e.target.value }));
             p.querySelector('#ri-minp').addEventListener('input', e => sendApply({ minPremium: e.target.value }));
+            p.querySelector('#ri-limit').addEventListener('input', e => sendApply({ limit: e.target.value }));
             p.querySelector('#ri-claimres').addEventListener('change', e => sendApply({ claimResolution: e.target.value }));
             // Load a pasted calculator link as the ROI tab's starting point.
             // Always load into the rep-facing index.html (Master Calculator view),
@@ -819,7 +860,10 @@
             const cov = document.getElementById('ri-coverage');
             if (cov) {
                 cov.classList.toggle('show', !!(s.returns || s.returnsOffset));
-                cov.querySelectorAll('.ri-cov').forEach(b => b.classList.toggle('active', b.dataset.cov === s.coverage));
+                // Protection coverage highlights only when NOT in the No-Protection lens.
+                cov.querySelectorAll('.ri-cov[data-cov]').forEach(b => b.classList.toggle('active', !s.returnsOffset && b.dataset.cov === s.coverage));
+                const np = cov.querySelector('.ri-cov-noprotect');
+                if (np) np.classList.toggle('active', !!s.returnsOffset);
             }
             const _curSel = document.getElementById('ri-currency');
             if (_curSel && document.activeElement !== _curSel && s.currency) _curSel.value = s.currency;
@@ -830,6 +874,9 @@
             const minpInput = document.getElementById('ri-minp');
             if (minpWrap) minpWrap.style.display = (s.pricing === 'percentage') ? '' : 'none';
             if (minpInput && document.activeElement !== minpInput && typeof s.minPremium === 'string') minpInput.value = s.minPremium;
+            // Limit $ (coverage cap) — reflected from the calc; shown for every pricing type.
+            const limitInput = document.getElementById('ri-limit');
+            if (limitInput && document.activeElement !== limitInput && typeof s.limit === 'string') limitInput.value = s.limit;
             const m = document.getElementById('ri-merchant');
             if (m && document.activeElement !== m && typeof s.merchantName === 'string') m.value = s.merchantName;
             const sc = document.getElementById('ri-saved-count');
