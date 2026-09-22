@@ -435,6 +435,11 @@
         /* platinum-monochrome logos; gold sheen on the active module */
         body.pm .nav-logo { filter:brightness(0) invert(1) opacity(.92); }
         body.pm .nav-item.active .nav-logo { filter:brightness(0) invert(1) sepia(1) saturate(3) hue-rotate(3deg) opacity(.95); }
+        /* Project Midnight — real holographic/marble tab logos (shown in full colour, unfiltered) */
+        body.pm #nav-roi .nav-logo      { content:url("midnight_mastercalctab.png")      !important; filter:none !important; max-width:200px; max-height:44px; }
+        body.pm #nav-proposal .nav-logo { content:url("midnight_proposaltab.png")        !important; filter:none !important; max-width:200px; max-height:44px; }
+        body.pm #nav-preview .nav-logo  { content:url("midnight_previewdesignertab.png") !important; filter:none !important; max-width:200px; max-height:44px; }
+        body.pm #nav-other .nav-logo    { content:url("midnight_othercalcstab.png")      !important; filter:none !important; max-width:200px; max-height:44px; }
         body.pm .nav-item .key-hint { color:#e9c46a; opacity:.6; border-color:rgba(233,196,106,.4); }
         body.pm .nav-item.active .key-hint { color:#f5d67b; opacity:.9; }
         body.pm .nav-group.expanded { background:linear-gradient(150deg,#20212b,#0e0f16); border-color:rgba(233,196,106,.35); }
@@ -560,16 +565,18 @@
         const TOOLS = [
             { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', logoLight: 'mastercalclogo_light.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
             { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   logoLight: 'proposal_logo_light.png', name: 'Proposal & MSA Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
-            { id: 'custom-build', emoji: '🛠️', name: 'Custom Build', url: 'https://drewshafe.github.io/si-roi-calculator/custom-build.html' },
+            // Custom Build is reached from the ROI tab's "Custom" sub-tab, not the nav.
+            { id: 'custom-build', emoji: '🛠️', name: 'Custom Build', url: 'https://drewshafe.github.io/si-roi-calculator/custom-build.html', hidden: true },
             // "Preview Designer" is a group header — clicking it reveals its sub-tabs below.
             { id: 'preview',      emoji: '🎨', logo: 'previewdesigner_logo.png', logoLight: 'previewdesigner_logo_light.png', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard'] },
             { id: 'widget-designer',   emoji: '🛒', logo: 'checkoutexp_logo.png',   logoLight: 'checkoutexp_logo.png',   name: 'Checkout Experience', url: 'https://drewshafe.github.io/si-widget-designer/',   parent: 'preview' },
             { id: 'email-automation',  emoji: '✉️', logo: 'emailbranding_logo.png',  logoLight: 'emailbranding_logo.png',  name: 'Email Automation',    url: 'https://drewshafe.github.io/si-email-automation/', parent: 'preview' },
             { id: 'claim-wizard',      emoji: '🪄', logo: 'claimwiz_logo.png',       logoLight: 'claimwiz_logo.png',       name: 'Claim Wizard',        url: 'https://drewshafe.github.io/si-claim-wizard/',     parent: 'preview' },
-            // Other calculators — flat top-level buttons (no dropdown group).
-            { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        logoLight: 'diy_logo_light.png',       name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/' },
-            { id: 'comparison',   emoji: '⚖️', logo: 'competitor_logo.png', logoLight: 'competitor_logo_light.png', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/' },
-            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    logoLight: 'gorgias_logo_light.png',   name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/' },
+            // "Other Calculators" — group header revealing its sub-tabs below.
+            { id: 'other',        emoji: '🧮', logo: 'othercalcs_logo.png', logoLight: 'othercalcs_logo_light.png', name: 'Other Calculators', group: true, children: ['self-insured', 'comparison', 'gorgias'] },
+            { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        logoLight: 'diy_logo_light.png',       name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/', parent: 'other' },
+            { id: 'comparison',   emoji: '⚖️', logo: 'competitor_logo.png', logoLight: 'competitor_logo_light.png', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/', parent: 'other' },
+            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    logoLight: 'gorgias_logo_light.png',   name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/', parent: 'other' },
         ];
 
         const nav = document.getElementById('nav');
@@ -580,7 +587,8 @@
         const frames = {};
         let activeId = null;
 
-        TOOLS.forEach((tool, i) => {
+        const RENDERED = TOOLS.filter(t => !t.hidden);
+        RENDERED.forEach((tool, i) => {
             const btn = document.createElement('button');
             btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '') + (tool.group ? ' nav-group' : '') + (tool.parent ? ' nav-sub-item' : '');
             btn.id = 'nav-' + tool.id;
@@ -624,11 +632,12 @@
                         <button class="ri-btn" id="ri-save">💾 Save</button>
                         <button class="ri-btn" id="ri-saved">📂 Saved <span id="ri-saved-count">0</span></button>
                     </div>
+                    <div class="ri-saved-list" id="ri-saved-list"></div>
                 </div>
                 <div class="ri-subnav">
                     <button class="ri-subtab active" data-pane="coverage">Coverage</button>
-                    <button class="ri-subtab" data-pane="saved">Saved Calcs</button>
                     <button class="ri-subtab" data-pane="display">Display</button>
+                    <button class="ri-subtab" data-pane="custom">Custom</button>
                 </div>
                 <!-- Pane: Coverage (Plan Options + Pricing) -->
                 <div class="ri-pane active" data-pane="coverage">
@@ -697,10 +706,6 @@
                         <span class="ri-sinet-margin" id="ri-sinet-margin">0% of premiums</span>
                     </div>
                 </div><!-- /pane coverage -->
-                <!-- Pane: Saved Calcs -->
-                <div class="ri-pane" data-pane="saved">
-                    <div class="ri-saved-list ri-saved-pane" id="ri-saved-list"></div>
-                </div>
                 <!-- Pane: Display -->
                 <div class="ri-pane" data-pane="display">
                     <div class="ri-disp">
@@ -710,13 +715,14 @@
                         <div class="ri-disp-row"><span class="ri-lbl">Layout</span><div class="ri-disp-btns"><button data-disp="layout" data-val="auto">Auto</button><button data-disp="layout" data-val="split">Split</button><button data-disp="layout" data-val="stacked">Stacked</button></div></div>
                     </div>
                 </div>`;
-            // Sub-tab switching (Coverage / Saved Calcs / Display)
+            // Sub-tab switching (Coverage / Display / Custom)
             p.querySelectorAll('.ri-subtab').forEach(tab => {
                 tab.addEventListener('click', () => {
                     const pane = tab.dataset.pane;
+                    // "Custom" opens the full Custom Build editor in the main preview area.
+                    if (pane === 'custom') { activate('custom-build'); return; }
                     p.querySelectorAll('.ri-subtab').forEach(t => t.classList.toggle('active', t === tab));
                     p.querySelectorAll('.ri-pane').forEach(pn => pn.classList.toggle('active', pn.dataset.pane === pane));
-                    if (pane === 'saved') renderSavedList(repState.savedConfigs || []);
                 });
             });
             // Feature toggles → post the desired boolean; the calc echoes back the
@@ -750,12 +756,13 @@
             p.querySelector('#ri-currency').addEventListener('change', e => sendApply({ currency: e.target.value }));
             p.querySelector('#ri-merchant').addEventListener('input', e => sendApply({ merchantName: e.target.value }));
             p.querySelector('#ri-save').addEventListener('click', () => sendApply({ command: 'save' }));
-            // Saved: rep-only. Toggle an in-sidebar, scrollable list of saved merchant
-            // configs; clicking one loads it into the calc.
-            // "Saved" jumps to the Saved Calcs sub-tab (its full pane).
+            // Saved: rep-only. Toggle an in-sidebar, scrollable dropdown of saved merchant
+            // configs (multi-select + delete); clicking one loads it into the calc.
             p.querySelector('#ri-saved').addEventListener('click', () => {
-                const tab = p.querySelector('.ri-subtab[data-pane="saved"]');
-                if (tab) tab.click();
+                const list = p.querySelector('#ri-saved-list');
+                const open = !list.classList.contains('show');
+                list.classList.toggle('show', open);
+                if (open) renderSavedList(repState.savedConfigs || []);
             });
             p.querySelector('#ri-pricing').addEventListener('change', e => sendApply({ pricing: e.target.value }));
             p.querySelector('#ri-minp').addEventListener('input', e => sendApply({ minPremium: e.target.value }));
@@ -1023,10 +1030,10 @@
                 const img = b.querySelector('.nav-logo');
                 if (img) {
                     const t = TOOLS.find(t => 'nav-' + t.id === b.id);
-                    // Preview Designer is a group header (never "active"); show its dark
-                    // logo whenever its section is open, matching the other tabs' light→dark.
-                    const previewOpen = t && t.id === 'preview' && ((t.children || []).includes(id) || id === 'preview');
-                    const wantSrc = (isActive || previewOpen) ? t.logo : (t.logoLight || t.logo);
+                    // A group header (Preview Designer / Other Calculators) is never "active";
+                    // show its dark logo whenever its section is open, matching the tabs' light→dark.
+                    const groupOpen = t && t.group && ((t.children || []).includes(id) || id === t.id);
+                    const wantSrc = (isActive || groupOpen) ? t.logo : (t.logoLight || t.logo);
                     if (img.getAttribute('src') !== wantSrc) img.src = wantSrc;
                 }
             });
@@ -1071,7 +1078,7 @@
         document.addEventListener('keydown', e => {
             if (e.target.matches('input, textarea, select')) return;
             const n = parseInt(e.key, 10);
-            if (n >= 1 && n <= TOOLS.length) activate(TOOLS[n - 1].id);
+            if (n >= 1 && n <= RENDERED.length) activate(RENDERED[n - 1].id);
         });
 
         // Default (no tab) view — nothing selected, landing shown.
