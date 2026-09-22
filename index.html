@@ -347,6 +347,15 @@
         .ri-saved-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .ri-saved-date { color: #adb5bd; flex-shrink: 0; font-size: 0.9em; }
         .ri-saved-empty { padding: 10px 8px; font-size: 0.64em; color: #adb5bd; text-align: center; }
+        /* Multi-select delete bar */
+        .ri-saved-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            padding: 6px 8px; border-bottom: 1px solid #e6e8f5; background: #f7f8ff; position: sticky; top: 0; z-index: 1; }
+        .ri-saved-selall { display: flex; align-items: center; gap: 5px; font-size: 0.62em; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.3px; color: #6c757d; cursor: pointer; }
+        .ri-saved-del { font-size: 0.62em; font-weight: 800; color: #fff; background: #dc3545; border: none;
+            border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+        .ri-saved-del:disabled { background: #d6bcc0; cursor: default; opacity: 0.7; }
+        .ri-saved-cb { flex-shrink: 0; cursor: pointer; margin: 0; }
 
         /* Paste-a-link loader */
         .ri-loadlink { display: flex; gap: 5px; margin-bottom: 2px; }
@@ -465,6 +474,8 @@
         body.pm .ri-saved-list { background:#0c0c14; border:1px solid rgba(233,196,106,.3); }
         body.pm .ri-saved-item { color:#e7e2d2; border-bottom:1px solid rgba(233,196,106,.12); }
         body.pm .ri-saved-item:hover { background:#161018; }
+        body.pm .ri-saved-actions { background:#100b10; border-bottom:1px solid rgba(233,196,106,.18); }
+        body.pm .ri-saved-selall { color:#c9c4b4; }
 
         /* Toolbar / chrome */
         body.pm .toolbar { background:#07070d; border-bottom:1px solid rgba(212,175,55,.25); }
@@ -795,16 +806,43 @@
         function renderSavedList(configs) {
             const list = document.getElementById('ri-saved-list');
             if (!list) return;
+            _savedSig = JSON.stringify((configs || []).map(c => c.name + '|' + (c.date || '')));
             if (!configs.length) {
                 list.innerHTML = '<div class="ri-saved-empty">No saved configs yet — enter a merchant name and click 💾 Save.</div>';
                 return;
             }
-            list.innerHTML = configs.map(c =>
-                `<div class="ri-saved-item" data-name="${c.name.replace(/"/g, '&quot;')}">
-                    <span class="ri-saved-name">${c.name}</span><span class="ri-saved-date">${c.date || ''}</span>
+            const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            list.innerHTML =
+                `<div class="ri-saved-actions">
+                    <label class="ri-saved-selall"><input type="checkbox" id="ri-sel-all"> Select all</label>
+                    <button class="ri-saved-del" id="ri-saved-del" disabled>Delete</button>
+                </div>` +
+                configs.map(c =>
+                `<div class="ri-saved-item" data-name="${esc(c.name)}">
+                    <input type="checkbox" class="ri-saved-cb" data-name="${esc(c.name)}" aria-label="Select ${esc(c.name)}">
+                    <span class="ri-saved-name">${esc(c.name)}</span><span class="ri-saved-date">${esc(c.date || '')}</span>
                 </div>`).join('');
+
+            const delBtn = list.querySelector('#ri-saved-del');
+            const selAll = list.querySelector('#ri-sel-all');
+            const cbs = () => Array.from(list.querySelectorAll('.ri-saved-cb'));
+            const refresh = () => {
+                const checked = cbs().filter(cb => cb.checked);
+                delBtn.disabled = checked.length === 0;
+                delBtn.textContent = checked.length ? `Delete (${checked.length})` : 'Delete';
+                if (selAll) selAll.checked = checked.length > 0 && checked.length === cbs().length;
+            };
+            cbs().forEach(cb => cb.addEventListener('change', refresh));
+            if (selAll) selAll.addEventListener('change', () => { cbs().forEach(cb => cb.checked = selAll.checked); refresh(); });
+            delBtn.addEventListener('click', () => {
+                const names = cbs().filter(cb => cb.checked).map(cb => cb.dataset.name);
+                if (!names.length) return;
+                if (!confirm(`Delete ${names.length} saved calc${names.length > 1 ? 's' : ''}?`)) return;
+                sendApply({ command: 'deleteConfigs', names: names });
+            });
             list.querySelectorAll('.ri-saved-item').forEach(item => {
-                item.addEventListener('click', () => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('ri-saved-cb')) return; // checkbox toggles selection, not load
                     sendApply({ command: 'loadConfig', name: item.dataset.name });
                     list.classList.remove('show');
                 });
@@ -812,6 +850,7 @@
         }
 
         let repState = {};
+        let _savedSig = null; // signature of the last-rendered saved-calc set (guards needless re-renders)
         let _upfrontTier = null; // 0.20 | 0.25 | 0.33 | null — rep-picked, no auto-suggestion
         function roiWin() { return frames['roi'] && frames['roi'].contentWindow; }
         function sendApply(patch) {
@@ -881,9 +920,13 @@
             if (m && document.activeElement !== m && typeof s.merchantName === 'string') m.value = s.merchantName;
             const sc = document.getElementById('ri-saved-count');
             if (sc && s.savedCount != null) sc.textContent = s.savedCount;
-            // Keep the saved list fresh if it's currently open.
+            // Keep the saved list fresh if it's visible — but only re-render when the
+            // saved set actually changed, so a recalc echo doesn't wipe live checkbox picks.
             const list = document.getElementById('ri-saved-list');
-            if (list && list.classList.contains('show')) renderSavedList(s.savedConfigs || []);
+            if (list && (list.classList.contains('show') || list.offsetParent !== null)) {
+                const sig = JSON.stringify((s.savedConfigs || []).map(c => c.name + '|' + (c.date || '')));
+                if (sig !== _savedSig) renderSavedList(s.savedConfigs || []);
+            }
             // SI Net MRR/ARR — ShipInsure's retained cut of the post-claim balance.
             const netLabel = document.getElementById('ri-sinet-label');
             const netVal = document.getElementById('ri-sinet-val');
