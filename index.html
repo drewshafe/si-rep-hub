@@ -317,6 +317,9 @@
         /* Coverage Mode row (shown only when Returns / Returns Offset is on) */
         .ri-coverage { display: none; }
         .ri-coverage.show { display: block; }
+        .ri-cov-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+        .ri-provider { font-size: 0.62em; padding: 3px 6px; border: 1px solid #cfd4e8; border-radius: 6px; background: #fff; color: #333; font-family: inherit; cursor: pointer; }
+        body.pm .ri-provider { background:#14141c; color:#e8e8ee; border-color:rgba(233,196,106,.4); }
         .ri-cov-btns { display: flex; flex-wrap: wrap; gap: 4px; }
         .ri-cov {
             padding: 4px 7px; font-size: 0.62em; font-weight: 700;
@@ -658,13 +661,20 @@
                         </div>
                     </div>
                     <div class="ri-coverage" id="ri-coverage">
-                        <span class="ri-lbl">Coverage Mode</span>
+                        <div class="ri-cov-head">
+                            <span class="ri-lbl">Coverage Mode</span>
+                            <select class="ri-provider" id="ri-provider" title="Returns platform provider">
+                                <option value="">Platform…</option>
+                                <option value="AfterShip">AfterShip</option>
+                                <option value="Loop">Loop</option>
+                            </select>
+                        </div>
                         <div class="ri-cov-btns">
-                            <button class="ri-cov" data-cov="default">Protected + Platform</button>
-                            <button class="ri-cov" data-cov="all_labels_platform">All + Platform</button>
-                            <button class="ri-cov" data-cov="labels_protected">Protected Labels</button>
-                            <button class="ri-cov" data-cov="all_labels">All Labels</button>
-                            <button class="ri-cov" data-cov="platform_only">Platform Only</button>
+                            <button class="ri-cov" data-cov="default">Portal + Opt-ins Offset</button>
+                            <button class="ri-cov" data-cov="platform_only">Portal Offset</button>
+                            <button class="ri-cov" data-cov="labels_protected">Opt-in Offset</button>
+                            <button class="ri-cov" data-cov="all_labels_platform">Total Returns Offset</button>
+                            <button class="ri-cov" data-cov="all_labels">All Labels Offset</button>
                             <button class="ri-cov ri-cov-noprotect" data-noprotect="1">No Protection</button>
                         </div>
                     </div>
@@ -745,6 +755,8 @@
                 btn.addEventListener('click', () => sendApply({ coverage: btn.dataset.cov, returnsOffset: false }));
             });
             p.querySelector('.ri-cov-noprotect').addEventListener('click', () => sendApply({ returnsOffset: true }));
+            // Returns platform provider (AfterShip / Loop) → relabels the calc's platform cost field.
+            p.querySelector('#ri-provider').addEventListener('change', e => sendApply({ returnsProvider: e.target.value }));
             // Upfront Rev Share: purely a hub-side calculator (rep picks a tier
             // manually, no auto-suggestion) — nothing to send to the calc.
             p.querySelectorAll('.ri-cov[data-upfront]').forEach(btn => {
@@ -914,6 +926,12 @@
                 cov.querySelectorAll('.ri-cov[data-cov]').forEach(b => b.classList.toggle('active', !s.returnsOffset && b.dataset.cov === s.coverage));
                 const np = cov.querySelector('.ri-cov-noprotect');
                 if (np) np.classList.toggle('active', !!s.returnsOffset);
+                // Returns platform provider — only relevant with real Protection + Returns (not the No-Protection lens)
+                const prov = document.getElementById('ri-provider');
+                if (prov) {
+                    prov.style.display = (s.returns && !s.returnsOffset) ? '' : 'none';
+                    if (document.activeElement !== prov && typeof s.returnsProvider === 'string') prov.value = s.returnsProvider;
+                }
             }
             const _curSel = document.getElementById('ri-currency');
             if (_curSel && document.activeElement !== _curSel && s.currency) _curSel.value = s.currency;
