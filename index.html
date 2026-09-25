@@ -1039,6 +1039,9 @@
                 const f = document.createElement('iframe');
                 f.src = _withTheme(tool.url);
                 f.title = tool.name;
+                // Let the embedded calc copy the cloud share link to the clipboard
+                // (☁ Cloud Save). Same-origin, but set it explicitly to be safe.
+                f.setAttribute('allow', 'clipboard-write; clipboard-read');
                 if (id === 'roi') f.addEventListener('load', () => { sendApply({ command: 'requestState' }); sendDisplay(); sendApply({ theme: _pmActive() ? 'midnight' : 'default' }); });
                 frames[id] = f;
                 frameWrap.appendChild(f);
