@@ -529,6 +529,7 @@
            matching the other tabs' light→dark-on-click behavior. */
         #nav-preview.expanded { background: white; color: var(--accent); }
     </style>
+    <script src="https://drewshafe.github.io/si-roi-calculator/sb.js"></script>
 </head>
 <body>
     <div class="layout">
@@ -640,6 +641,10 @@
                         <button class="ri-btn" id="ri-saved">📂 Saved <span id="ri-saved-count">0</span></button>
                     </div>
                     <div class="ri-saved-list" id="ri-saved-list"></div>
+                    <div class="ri-btn-row" style="margin-top:5px;">
+                        <button class="ri-btn" id="ri-cloud-folders" style="flex:1;">☁ Cloud Folders</button>
+                    </div>
+                    <div class="ri-saved-list" id="ri-cloud-list"></div>
                 </div>
                 <div class="ri-subnav">
                     <button class="ri-subtab active" data-pane="coverage">Coverage</button>
@@ -779,6 +784,27 @@
                 list.classList.toggle('show', open);
                 if (open) renderSavedList(repState.savedConfigs || []);
             });
+            // ☁ Cloud Folders — the rep's cloud-saved calculators (Supabase). Select one
+            // to load it into the Master Calculator here, or open the branded proposal.
+            p.querySelector('#ri-cloud-folders').addEventListener('click', async () => {
+                const list = p.querySelector('#ri-cloud-list');
+                const open = !list.classList.contains('show');
+                list.classList.toggle('show', open);
+                if (!open) return;
+                if (!window.SIsb) { list.innerHTML = '<div class="ri-saved-empty">Cloud module unavailable.</div>'; return; }
+                list.innerHTML = '<div class="ri-saved-empty">Loading…</div>';
+                try {
+                    const u = await SIsb.currentUser();
+                    if (!u) {
+                        const email = prompt('Sign in to view your cloud folders.\nEnter your ShipInsure email — we\'ll send a magic link:');
+                        if (!email) { list.innerHTML = '<div class="ri-saved-empty">Sign in to view your folders.</div>'; return; }
+                        const { error } = await SIsb.signInMagic(email.trim());
+                        list.innerHTML = '<div class="ri-saved-empty">' + (error ? ('Error: ' + error.message) : ('Magic link sent to ' + email.trim() + '. Open it (same browser), then click ☁ Cloud Folders again.')) + '</div>';
+                        return;
+                    }
+                    renderCloudFolders(await SIsb.listConfigs());
+                } catch (e) { list.innerHTML = '<div class="ri-saved-empty">' + (e && e.message || e) + '</div>'; }
+            });
             p.querySelector('#ri-pricing').addEventListener('change', e => sendApply({ pricing: e.target.value }));
             p.querySelector('#ri-minp').addEventListener('input', e => sendApply({ minPremium: e.target.value }));
             p.querySelector('#ri-limit').addEventListener('input', e => sendApply({ limit: e.target.value }));
@@ -867,6 +893,45 @@
                     if (e.target.classList.contains('ri-saved-cb')) return; // checkbox toggles selection, not load
                     sendApply({ command: 'loadConfig', name: item.dataset.name });
                     list.classList.remove('show');
+                });
+            });
+        }
+
+        // ☁ Cloud Folders list — the rep's Supabase configs, grouped by merchant.
+        // Click a row to load it into the Master Calculator here; ↗ opens the branded
+        // merchant proposal in a new window.
+        function renderCloudFolders(rows) {
+            const list = document.getElementById('ri-cloud-list');
+            if (!list) return;
+            if (!rows || !rows.length) { list.innerHTML = '<div class="ri-saved-empty">No cloud calculators yet — use ☁ Cloud Save in the calculator.</div>'; return; }
+            const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const groups = {};
+            rows.forEach(r => { const m = r.merchant || '—'; (groups[m] = groups[m] || []).push(r); });
+            let html = '';
+            Object.keys(groups).sort().forEach(m => {
+                html += '<div class="ri-saved-actions" style="font-weight:800;text-transform:uppercase;letter-spacing:.05em;font-size:0.6em;">' + esc(m) + '</div>';
+                groups[m].forEach(r => {
+                    const date = r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                    const edited = r.updated_by === 'merchant' ? ' ✎' : '';
+                    html += '<div class="ri-saved-item" data-id="' + esc(r.id) + '">'
+                        + '<span class="ri-saved-name">' + esc(r.title || r.merchant || r.id) + '</span>'
+                        + '<span class="ri-saved-date">' + esc(date + edited) + '</span>'
+                        + '<button class="ri-cloud-open" title="Open branded proposal in a new window" style="flex-shrink:0;font-size:0.9em;background:none;border:none;cursor:pointer;color:#4a5fc1;padding:0 2px;">↗</button></div>';
+                });
+            });
+            list.innerHTML = html;
+            const CALC = 'https://drewshafe.github.io/si-roi-calculator/';
+            list.querySelectorAll('.ri-saved-item').forEach(item => {
+                const id = item.dataset.id;
+                item.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('ri-cloud-open')) return;
+                    activate('roi');
+                    if (frames['roi']) frames['roi'].src = CALC + '?id=' + id;
+                    list.classList.remove('show');
+                });
+                item.querySelector('.ri-cloud-open').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.open(CALC + 'proposal.html?id=' + id, '_blank', 'noopener');
                 });
             });
         }
