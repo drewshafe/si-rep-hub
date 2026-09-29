@@ -923,12 +923,16 @@
             const CALC = 'https://drewshafe.github.io/si-roi-calculator/';
             list.querySelectorAll('.ri-saved-item').forEach(item => {
                 const id = item.dataset.id;
+                // Row click → load the FULLY BRANDED merchant proposal into the Master
+                // Calculator (the calc page ignores custom-build branding, so loading
+                // proposal.html is what actually shows the saved logo/colors/layout).
                 item.addEventListener('click', (e) => {
                     if (e.target.classList.contains('ri-cloud-open')) return;
                     activate('roi');
-                    if (frames['roi']) frames['roi'].src = CALC + '?id=' + id;
+                    if (frames['roi']) frames['roi'].src = CALC + 'proposal.html?id=' + id;
                     list.classList.remove('show');
                 });
+                // ↗ → same branded proposal in a new window (full screen / to share).
                 item.querySelector('.ri-cloud-open').addEventListener('click', (e) => {
                     e.stopPropagation();
                     window.open(CALC + 'proposal.html?id=' + id, '_blank', 'noopener');
