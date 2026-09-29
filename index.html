@@ -738,7 +738,7 @@
                 tab.addEventListener('click', () => {
                     const pane = tab.dataset.pane;
                     // "Custom" opens the full Custom Build editor in the main preview area.
-                    if (pane === 'custom') { activate('custom-build'); return; }
+                    if (pane === 'custom') { openCustomBuild(_hubCloudId); return; }
                     p.querySelectorAll('.ri-subtab').forEach(t => t.classList.toggle('active', t === tab));
                     p.querySelectorAll('.ri-pane').forEach(pn => pn.classList.toggle('active', pn.dataset.pane === pane));
                 });
@@ -928,6 +928,7 @@
                 // proposal.html is what actually shows the saved logo/colors/layout).
                 item.addEventListener('click', (e) => {
                     if (e.target.classList.contains('ri-cloud-open')) return;
+                    _hubCloudId = id;   // so the Custom tab opens THIS config, branded
                     activate('roi');
                     if (frames['roi']) frames['roi'].src = CALC + 'proposal.html?id=' + id;
                     list.classList.remove('show');
@@ -935,9 +936,22 @@
                 // ↗ → same branded proposal in a new window (full screen / to share).
                 item.querySelector('.ri-cloud-open').addEventListener('click', (e) => {
                     e.stopPropagation();
+                    _hubCloudId = id;
                     window.open(CALC + 'proposal.html?id=' + id, '_blank', 'noopener');
                 });
             });
+        }
+
+        let _hubCloudId = null; // the cloud config last loaded from ☁ Cloud Folders (so the Custom tab can open it branded)
+        // Open Custom Build, loading a specific cloud config (branded) when one is set.
+        function openCustomBuild(id) {
+            const tool = TOOLS.find(t => t.id === 'custom-build');
+            if (!tool) return;
+            const url = tool.url + (id ? '?id=' + encodeURIComponent(id) : '');
+            if (frames['custom-build']) frames['custom-build'].src = url;
+            activate('custom-build');
+            // If activate just created the iframe (without the id), reassert the id src.
+            if (id && frames['custom-build'] && frames['custom-build'].src.indexOf('id=') < 0) frames['custom-build'].src = url;
         }
 
         let repState = {};
