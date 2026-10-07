@@ -443,6 +443,7 @@
         body.pm #nav-proposal .nav-logo { content:url("midnight_proposaltab.png")        !important; filter:none !important; max-width:200px; max-height:44px; }
         body.pm #nav-preview .nav-logo  { content:url("midnight_previewdesignertab.png") !important; filter:none !important; max-width:200px; max-height:44px; }
         body.pm #nav-other .nav-logo    { content:url("midnight_othercalcstab.png")      !important; filter:none !important; max-width:200px; max-height:44px; }
+        body.pm #nav-vault .nav-logo    { content:url("merchantvault_logo_light.png")    !important; filter:none !important; max-width:190px; max-height:42px; }
         /* Preview Designer sub-tabs — holographic Midnight logos */
         body.pm #nav-widget-designer .nav-logo  { content:url("midnight_checkoutexppre.png") !important; filter:none !important; max-width:165px; max-height:36px; }
         body.pm #nav-email-automation .nav-logo { content:url("midnight_emailexp.png")        !important; filter:none !important; max-width:165px; max-height:36px; }
@@ -573,6 +574,8 @@
         const TOOLS = [
             { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', logoLight: 'mastercalclogo_light.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
             { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   logoLight: 'proposal_logo_light.png', name: 'Proposal & MSA Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
+            // Merchant Vault — in-house deal rooms (one link per merchant: deck, designs, team, action plan).
+            { id: 'vault',        emoji: '🔐', logo: 'merchantvault_logo.png', logoLight: 'merchantvault_logo_light.png', name: 'Merchant Vault', url: 'https://drewshafe.github.io/si-merchant-vault/' },
             // Custom Build is reached from the ROI tab's "Custom" sub-tab, not the nav.
             { id: 'custom-build', emoji: '🛠️', name: 'Custom Build', url: 'https://drewshafe.github.io/si-roi-calculator/custom-build.html', hidden: true },
             // "Preview Designer" is a group header — clicking it reveals its sub-tabs below.
@@ -1166,6 +1169,14 @@
             // served from drewshafe.github.io), so we can call the calc's own
             // buildMerchantLink() directly instead of round-tripping postMessage.
             let url = tool.url;
+            // Merchant Vault: copy the open vault's merchant link (same origin, like the ROI calc).
+            if (tool.id === 'vault') {
+                try {
+                    const win = frames.vault && frames.vault.contentWindow;
+                    const link = win && typeof win.mvMerchantLink === 'function' && win.mvMerchantLink();
+                    if (link) url = link;
+                } catch (err) { /* not loaded yet — fall back to tool.url */ }
+            }
             if (tool.id === 'roi') {
                 try {
                     const win = frames.roi && frames.roi.contentWindow;
