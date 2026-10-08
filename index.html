@@ -260,6 +260,15 @@
             text-transform: uppercase;
             color: #c7cffb;
         }
+        /* Collapsible sidebar sections (Save/Load, Plan Options, Pricing, Upfront) */
+        .ri-sec { margin: 3px 0 5px; }
+        .ri-sec-h { display: flex; align-items: center; gap: 6px; width: 100%; background: none; border: none;
+            cursor: pointer; padding: 4px 0; font-size: 0.6em; font-weight: 800; letter-spacing: 0.09em;
+            text-transform: uppercase; color: #c7cffb; text-align: left; font-family: inherit; }
+        .ri-sec-caret { font-size: 0.95em; line-height: 1; opacity: 0.85; }
+        .ri-sec.collapsed .ri-sec-body { display: none; }
+        .ri-sec-body { display: flex; flex-direction: column; gap: 5px; }
+        body.pm .ri-sec-h { color: #e9c46a; }
         .ri-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
         .ri-col { display: flex; flex-direction: column; gap: 5px; }
         .ri-toggle {
@@ -572,7 +581,7 @@
 
     <script>
         const TOOLS = [
-            { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', logoLight: 'mastercalclogo_light.png', name: 'ROI Master Calculator', url: 'https://drewshafe.github.io/si-roi-calculator/' },
+            { id: 'roi',          emoji: '📦', logo: 'mastercalclogo.png', logoLight: 'mastercalclogo_light.png', name: 'ROI Builder', url: 'https://drewshafe.github.io/si-roi-calculator/' },
             { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   logoLight: 'proposal_logo_light.png', name: 'Proposal & MSA Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
             // Merchant Vault — in-house deal rooms (one link per merchant: deck, designs, team, action plan).
             { id: 'vault',        emoji: '🔐', logo: 'merchantvault_logo.png', logoLight: 'merchantvault_logo_light.png', name: 'Merchant Vault', url: 'https://drewshafe.github.io/si-merchant-vault/' },
@@ -628,6 +637,49 @@
         });
 
         // ── REP Inputs panel (mirrors the calc's ShipInsure Inputs, drives it live) ──
+        // Turn the sidebar's section headers into collapsible dropdowns so reps can hide
+        // the parts they aren't using. Save/Load + Upfront default collapsed; the primary
+        // Plan Options + Pricing default open.
+        function hubCollapsibles(p) {
+            const caret = c => '<span class="ri-sec-caret">' + (c ? '▸' : '▾') + '</span>';
+            const makeSec = (title, nodes, collapsed) => {
+                if (!nodes.length) return;
+                const parent = nodes[0].parentNode;
+                const sec = document.createElement('div'); sec.className = 'ri-sec' + (collapsed ? ' collapsed' : '');
+                const h = document.createElement('button'); h.type = 'button'; h.className = 'ri-sec-h'; h.innerHTML = caret(collapsed) + title;
+                const body = document.createElement('div'); body.className = 'ri-sec-body';
+                parent.insertBefore(sec, nodes[0]);
+                sec.appendChild(h); sec.appendChild(body);
+                nodes.forEach(n => body.appendChild(n));
+                h.addEventListener('click', () => { const c = sec.classList.toggle('collapsed'); const cr = h.querySelector('.ri-sec-caret'); if (cr) cr.textContent = c ? '▸' : '▾'; });
+            };
+            // Save / Load Options — the top block (merchant name + save/saved + cloud folders)
+            const saveCol = p.querySelector(':scope > .ri-col');
+            if (saveCol) makeSec('Save / Load Options', [saveCol], true);
+            const cov = p.querySelector('.ri-pane[data-pane="coverage"]');
+            if (cov) {
+                // Each .ri-h header + its following siblings (until the next header / upfront / SI-net) → a section.
+                const kids = Array.from(cov.children);
+                for (let i = 0; i < kids.length; i++) {
+                    const node = kids[i];
+                    if (!(node.classList && node.classList.contains('ri-h'))) continue;
+                    const title = node.textContent.trim();
+                    const group = []; let j = i + 1;
+                    while (j < kids.length) { const k = kids[j]; if (k.classList && (k.classList.contains('ri-h') || k.classList.contains('ri-upfront') || k.classList.contains('ri-sinet'))) break; group.push(k); j++; }
+                    const sec = document.createElement('div'); sec.className = 'ri-sec';
+                    const h = document.createElement('button'); h.type = 'button'; h.className = 'ri-sec-h'; h.innerHTML = caret(false) + title;
+                    const body = document.createElement('div'); body.className = 'ri-sec-body';
+                    cov.insertBefore(sec, node); sec.appendChild(h); sec.appendChild(body);
+                    group.forEach(n => body.appendChild(n));
+                    node.remove();
+                    h.addEventListener('click', () => { const c = sec.classList.toggle('collapsed'); const cr = h.querySelector('.ri-sec-caret'); if (cr) cr.textContent = c ? '▸' : '▾'; });
+                }
+                // Upfront Rev Share → its own collapsible (hide the now-redundant inner label).
+                const up = cov.querySelector('.ri-upfront');
+                if (up) { makeSec('Upfront Rev Share', [up], true); const lbl = up.querySelector('.ri-upfront-head .ri-lbl'); if (lbl) lbl.style.display = 'none'; }
+            }
+        }
+
         function buildRepInputs() {
             const p = document.createElement('div');
             p.className = 'rep-inputs';
@@ -736,6 +788,7 @@
                         <div class="ri-disp-row"><span class="ri-lbl">Layout</span><div class="ri-disp-btns"><button data-disp="layout" data-val="auto">Auto</button><button data-disp="layout" data-val="split">Split</button><button data-disp="layout" data-val="stacked">Stacked</button></div></div>
                     </div>
                 </div>`;
+            hubCollapsibles(p);
             // Sub-tab switching (Coverage / Display / Custom)
             p.querySelectorAll('.ri-subtab').forEach(tab => {
                 tab.addEventListener('click', () => {
