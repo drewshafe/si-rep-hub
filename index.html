@@ -187,10 +187,13 @@
 
         .frame-wrap iframe.visible { display: block; }
 
-        /* Custom Build stacked beneath the ROI calc (hub-only) — the calc stays on top,
-           the branding/styler editor sits below it, so edits happen without a full swap. */
-        .frame-wrap.cb-stacked iframe.cb-top { display: block !important; inset: 0 0 44% 0; height: auto; }
-        .frame-wrap.cb-stacked iframe.cb-bottom { display: block !important; inset: 56% 0 0 0; height: auto; border-top: 3px solid #4656c7; box-shadow: 0 -5px 18px rgba(0,0,0,0.12); }
+        /* Custom Build stacked beneath the ROI calc (hub-only). Cross-origin iframes
+           can't auto-size to their content, and carving the fixed viewport into two
+           panes left each too short to use — so instead the whole area scrolls as one,
+           with the calc on top and the editor below at natural working heights. */
+        .frame-wrap.cb-stacked { overflow-y: auto; }
+        .frame-wrap.cb-stacked iframe.cb-top { position: relative; inset: auto; display: block !important; width: 100%; height: 820px; }
+        .frame-wrap.cb-stacked iframe.cb-bottom { position: relative; inset: auto; display: block !important; width: 100%; height: 1150px; border-top: 3px solid #4656c7; box-shadow: 0 -5px 18px rgba(0,0,0,0.12); }
 
         .copied-toast {
             position: fixed;
