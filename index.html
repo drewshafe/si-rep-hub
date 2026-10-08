@@ -187,6 +187,11 @@
 
         .frame-wrap iframe.visible { display: block; }
 
+        /* Custom Build stacked beneath the ROI calc (hub-only) — the calc stays on top,
+           the branding/styler editor sits below it, so edits happen without a full swap. */
+        .frame-wrap.cb-stacked iframe.cb-top { display: block !important; inset: 0 0 44% 0; height: auto; }
+        .frame-wrap.cb-stacked iframe.cb-bottom { display: block !important; inset: 56% 0 0 0; height: auto; border-top: 3px solid #4656c7; box-shadow: 0 -5px 18px rgba(0,0,0,0.12); }
+
         .copied-toast {
             position: fixed;
             bottom: 20px;
@@ -793,9 +798,9 @@
             p.querySelectorAll('.ri-subtab').forEach(tab => {
                 tab.addEventListener('click', () => {
                     const pane = tab.dataset.pane;
-                    // "Custom" opens the full Custom Build editor in the main preview area.
-                    if (pane === 'custom') { openCustomBuild(_hubCloudId); return; }
-                    p.querySelectorAll('.ri-subtab').forEach(t => t.classList.toggle('active', t === tab));
+                    // "Custom" toggles the branding/styler editor stacked beneath the calc.
+                    if (pane === 'custom') { toggleCustomStack(); return; }
+                    p.querySelectorAll('.ri-subtab').forEach(t => { if (t.dataset.pane !== 'custom') t.classList.toggle('active', t === tab); });
                     p.querySelectorAll('.ri-pane').forEach(pn => pn.classList.toggle('active', pn.dataset.pane === pane));
                 });
             });
@@ -1010,6 +1015,41 @@
             if (id && frames['custom-build'] && frames['custom-build'].src.indexOf('id=') < 0) frames['custom-build'].src = url;
         }
 
+        // Custom Build as an inline toggle: stack the branding/styler editor BENEATH the
+        // ROI calc (both visible) instead of swapping the whole pane to a separate view.
+        let _cbStacked = false;
+        function clearCustomStack() {
+            _cbStacked = false;
+            frameWrap.classList.remove('cb-stacked');
+            if (frames['roi']) frames['roi'].classList.remove('cb-top');
+            if (frames['custom-build']) frames['custom-build'].classList.remove('cb-bottom');
+            const sub = document.querySelector('.ri-subtab[data-pane="custom"]');
+            if (sub) sub.classList.remove('active');
+        }
+        function toggleCustomStack() {
+            if (_cbStacked) { clearCustomStack(); return; }
+            if (activeId !== 'roi') activate('roi');
+            const tool = TOOLS.find(t => t.id === 'custom-build');
+            if (!tool) return;
+            if (!frames['custom-build']) {
+                const f = document.createElement('iframe');
+                f.title = tool.name;
+                f.setAttribute('allow', 'clipboard-write; clipboard-read');
+                frames['custom-build'] = f;
+                frameWrap.appendChild(f);
+            }
+            // Seed the editor from the cloud config last loaded (if any), so it edits the
+            // same merchant; otherwise it opens on its defaults.
+            const url = tool.url + (_hubCloudId ? '?id=' + encodeURIComponent(_hubCloudId) : '');
+            if ((frames['custom-build'].getAttribute('src') || '') !== _withTheme(url)) frames['custom-build'].src = _withTheme(url);
+            _cbStacked = true;
+            frameWrap.classList.add('cb-stacked');
+            frames['roi'].classList.add('cb-top');
+            frames['custom-build'].classList.add('cb-bottom');
+            const sub = document.querySelector('.ri-subtab[data-pane="custom"]');
+            if (sub) sub.classList.add('active');
+        }
+
         let repState = {};
         let _savedSig = null; // signature of the last-rendered saved-calc set (guards needless re-renders)
         let _upfrontTier = null; // 0.20 | 0.25 | 0.33 | null — rep-picked, no auto-suggestion
@@ -1171,6 +1211,9 @@
             }
             if (id === activeId) { setGroupsForActive(id); return; }
             activeId = id;
+            // Leaving the ROI calc tears down the stacked Custom Build editor so it
+            // doesn't bleed over other tools' iframes.
+            if (id !== 'roi' && _cbStacked) clearCustomStack();
             { const land = document.getElementById('rhLanding'); if (land) land.classList.remove('show'); }
 
             // Lazy-load iframe on first visit; keep it alive after (preserves entered data)
