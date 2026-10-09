@@ -987,14 +987,14 @@
             const CALC = 'https://drewshafe.github.io/si-roi-calculator/';
             list.querySelectorAll('.ri-saved-item').forEach(item => {
                 const id = item.dataset.id;
-                // Row click → load the FULLY BRANDED merchant proposal into the Master
-                // Calculator (the calc page ignores custom-build branding, so loading
-                // proposal.html is what actually shows the saved logo/colors/layout).
+                // Row click → load the BRANDED, EDITABLE calc into the Master Calculator
+                // (the calc now applies the merchant folder's branding via applyCalcBranding,
+                // so plan options / pricing stay editable while showing the saved brand).
                 item.addEventListener('click', (e) => {
                     if (e.target.classList.contains('ri-cloud-open')) return;
-                    _hubCloudId = id;   // so the Custom tab opens THIS config, branded
+                    _hubCloudId = id;   // so the Custom toggle stacks THIS config's editor
                     activate('roi');
-                    if (frames['roi']) frames['roi'].src = CALC + 'proposal.html?id=' + id;
+                    if (frames['roi']) frames['roi'].src = CALC + 'index.html?id=' + id;
                     list.classList.remove('show');
                 });
                 // ↗ → same branded proposal in a new window (full screen / to share).
