@@ -1202,6 +1202,11 @@
         }
         window.addEventListener('message', e => {
             if (e.data && e.data.siHub === 'state') { repState = e.data; syncRepInputs(e.data); }
+            // Live branding sync: the stacked Custom Build styler posts its branding → relay
+            // to the ROI calc above so it re-brands without a reload.
+            if (e.data && e.data.siCB === 'branding' && frames['roi'] && frames['roi'].contentWindow) {
+                try { frames['roi'].contentWindow.postMessage({ siHub: 'branding', cfg: e.data.cfg }, '*'); } catch (err) {}
+            }
         });
 
         // A group is expanded iff the active tool is that group or one of its children.
