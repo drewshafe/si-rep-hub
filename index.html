@@ -888,15 +888,28 @@
                     setTimeout(() => { inp.style.borderColor = ''; }, 1500);
                     return;
                 }
-                let search = '';
-                try { search = new URL(raw).search; } catch (e) { /* fall through with no query */ }
+                let search = '', hash = '';
+                try { const u = new URL(raw); search = u.search; hash = u.hash; } catch (e) { /* fall through with no query */ }
                 // Reflect an Upfront Rev Share tier carried in the link into the sidebar.
                 try {
                     const upf = new URLSearchParams(search).get('upf');
                     _upfrontTier = upf ? parseFloat(upf) : null;
                 } catch (e) { _upfrontTier = null; }
+                // Capture the pasted link so the Custom Build styler can seed from it too —
+                // a pasted link opens BOTH the calc above AND the styler below, editable.
+                // A ?id= link is a cloud config (branded, re-saveable) → prefer that path;
+                // otherwise stash the raw link for the styler's ?base= importer (bld + cbimg).
+                try {
+                    const pid = new URLSearchParams(search).get('id');
+                    _hubCloudId = pid || null;
+                    _hubPastedLink = pid ? null : raw;
+                } catch (e) { _hubCloudId = null; _hubPastedLink = raw; }
                 activate('roi');
-                if (frames['roi']) frames['roi'].src = 'https://drewshafe.github.io/si-roi-calculator/' + search;
+                // Preserve the #cbimg logo hash (not just the query) so a pasted custom link
+                // shows its logo on the calc, not only its accent colors.
+                if (frames['roi']) frames['roi'].src = 'https://drewshafe.github.io/si-roi-calculator/' + search + hash;
+                // If the styler is already stacked, re-seed it live from the new link.
+                if (_stackedTool === 'custom-build') { clearStack(); toggleStack('custom-build'); }
                 inp.value = '';
             };
             p.querySelector('#ri-loadlink-btn').addEventListener('click', loadFromLink);
@@ -995,6 +1008,7 @@
                 item.addEventListener('click', (e) => {
                     if (e.target.classList.contains('ri-cloud-open')) return;
                     _hubCloudId = id;   // so the Custom toggle stacks THIS config's editor
+                    _hubPastedLink = null; // cloud config wins over any earlier pasted link
                     activate('roi');
                     if (frames['roi']) frames['roi'].src = CALC + 'index.html?id=' + id;
                     list.classList.remove('show');
@@ -1003,12 +1017,14 @@
                 item.querySelector('.ri-cloud-open').addEventListener('click', (e) => {
                     e.stopPropagation();
                     _hubCloudId = id;
+                    _hubPastedLink = null; // cloud config wins over any earlier pasted link
                     window.open(CALC + 'proposal.html?id=' + id, '_blank', 'noopener');
                 });
             });
         }
 
         let _hubCloudId = null; // the cloud config last loaded from ☁ Cloud Folders (so the Custom tab can open it branded)
+        let _hubPastedLink = null; // a link pasted into the loader with no ?id= (so the Custom tab can seed its styler via ?base=)
         // Open Custom Build, loading a specific cloud config (branded) when one is set.
         function openCustomBuild(id) {
             const tool = TOOLS.find(t => t.id === 'custom-build');
@@ -1048,8 +1064,15 @@
                 frameWrap.appendChild(f);
             }
             if (toolId === 'custom-build') {
-                // Seed the styler from the cloud config last loaded (if any).
-                const url = tool.url + (_hubCloudId ? '?id=' + encodeURIComponent(_hubCloudId) : '');
+                // Seed the styler so it opens editable on the SAME merchant as the calc:
+                // a cloud config (?id=, branded + re-saveable) when one was loaded, else the
+                // last pasted link imported via ?base= (branding + data), else blank.
+                let seed = '';
+                if (_hubCloudId) seed = '?id=' + encodeURIComponent(_hubCloudId);
+                // Double-encode: the styler's ?base= reader decodeURIComponent()s once on
+                // top of URLSearchParams' own decode, so a bld/logo link round-trips intact.
+                else if (_hubPastedLink) seed = '?base=' + encodeURIComponent(encodeURIComponent(_hubPastedLink));
+                const url = tool.url + seed;
                 if ((frames[toolId].getAttribute('src') || '') !== _withTheme(url)) frames[toolId].src = _withTheme(url);
             } else if (toolId === 'proposal') {
                 // Seed the Proposal/MSA generator with the calc's live merchant link so it
