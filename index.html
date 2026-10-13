@@ -1438,6 +1438,14 @@
                     if (link) url = link;
                 } catch (err) { /* not loaded yet — fall back to tool.url */ }
             }
+            // Email Automation: copy the customized email preview link.
+            if (tool.id === 'email-automation') {
+                try {
+                    const win = frames['email-automation'] && frames['email-automation'].contentWindow;
+                    const link = win && typeof win.eaPreviewLink === 'function' && win.eaPreviewLink();
+                    if (link) url = link;
+                } catch (err) { /* not loaded yet — fall back to tool.url */ }
+            }
             if (tool.id === 'roi') {
                 try {
                     const win = frames.roi && frames.roi.contentWindow;
