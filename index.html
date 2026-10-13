@@ -1438,6 +1438,14 @@
                     if (link) url = link;
                 } catch (err) { /* not loaded yet — fall back to tool.url */ }
             }
+            // Claim Wizard: copy the branded claims-flow demo link.
+            if (tool.id === 'claim-wizard') {
+                try {
+                    const win = frames['claim-wizard'] && frames['claim-wizard'].contentWindow;
+                    const link = win && typeof win.cwPreviewLink === 'function' && win.cwPreviewLink();
+                    if (link) url = link;
+                } catch (err) { /* not loaded yet — fall back to tool.url */ }
+            }
             // Email Automation: copy the customized email preview link.
             if (tool.id === 'email-automation') {
                 try {
