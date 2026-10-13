@@ -763,6 +763,21 @@
                         <div id="ri-minp-wrap" style="flex:0 0 auto;display:none;"><span class="ri-lbl">Min $</span><input class="ri-sel" id="ri-minp" placeholder="0.00" style="width:52px;"></div>
                         <div id="ri-limit-wrap" style="flex:0 0 auto;"><span class="ri-lbl">Limit $</span><input class="ri-sel" id="ri-limit" placeholder="none" style="width:58px;"></div>
                     </div>
+                    <!-- Hybrid Coverage controls — shown only when the Hybrid Coverage template is picked. -->
+                    <div class="ri-sel-row" id="ri-hybrid-row" style="display:none;">
+                        <div style="flex:2;"><span class="ri-lbl">Hybrid Mode</span>
+                            <select class="ri-sel" id="ri-hybrid-mode">
+                                <option value="optin_threshold">Opt-in + threshold</option>
+                                <option value="auto_above">No opt-in above threshold</option>
+                                <option value="no_threshold">No threshold</option>
+                            </select>
+                        </div>
+                        <div id="ri-hth-wrap" style="flex:0 0 auto;"><span class="ri-lbl">Thresh $</span><input class="ri-sel" id="ri-hth" placeholder="75" style="width:52px;"></div>
+                    </div>
+                    <div class="ri-sel-row" id="ri-hybrid-above-row" style="display:none;">
+                        <div style="flex:1;"><span class="ri-lbl">Orders &gt; Thresh</span><input class="ri-sel" id="ri-hao" placeholder="0"></div>
+                        <div style="flex:1;"><span class="ri-lbl">AOV &gt; Thresh</span><input class="ri-sel" id="ri-hav" placeholder="(AOV)"></div>
+                    </div>
                     <div class="ri-sel-row">
                         <div style="flex:1;"><span class="ri-lbl">Currency</span>
                             <select class="ri-sel" id="ri-currency">
@@ -902,7 +917,19 @@
                     g.style.display = any ? '' : 'none';
                 });
             });
-            p.querySelector('#ri-pricing').addEventListener('change', e => sendApply({ pricing: e.target.value }));
+            // Show/hide the Hybrid Coverage controls based on the chosen template + mode.
+            const syncHybridRows = () => {
+                const isHyb = (p.querySelector('#ri-pricing').value === 'hybrid_coverage');
+                const mode = (p.querySelector('#ri-hybrid-mode') || {}).value || 'optin_threshold';
+                const row = p.querySelector('#ri-hybrid-row'), above = p.querySelector('#ri-hybrid-above-row');
+                if (row) row.style.display = isHyb ? '' : 'none';
+                if (above) above.style.display = (isHyb && mode !== 'no_threshold') ? '' : 'none';
+            };
+            p.querySelector('#ri-pricing').addEventListener('change', e => { sendApply({ pricing: e.target.value }); syncHybridRows(); });
+            p.querySelector('#ri-hybrid-mode').addEventListener('change', e => { sendApply({ hybridMode: e.target.value }); syncHybridRows(); });
+            p.querySelector('#ri-hth').addEventListener('input', e => sendApply({ hybridThreshold: e.target.value }));
+            p.querySelector('#ri-hao').addEventListener('input', e => sendApply({ hybridAboveOrders: e.target.value }));
+            p.querySelector('#ri-hav').addEventListener('input', e => sendApply({ hybridAboveAov: e.target.value }));
             p.querySelector('#ri-minp').addEventListener('input', e => sendApply({ minPremium: e.target.value }));
             p.querySelector('#ri-limit').addEventListener('input', e => sendApply({ limit: e.target.value }));
             p.querySelector('#ri-claimres').addEventListener('change', e => sendApply({ claimResolution: e.target.value }));
@@ -1244,6 +1271,18 @@
             // Limit $ (coverage cap) — reflected from the calc; shown for every pricing type.
             const limitInput = document.getElementById('ri-limit');
             if (limitInput && document.activeElement !== limitInput && typeof s.limit === 'string') limitInput.value = s.limit;
+            // Hybrid Coverage controls — mirror the calc's state; shown only for the Hybrid template.
+            {
+                const isHyb = (s.pricing === 'hybrid_coverage');
+                const hMode = document.getElementById('ri-hybrid-mode');
+                if (hMode && document.activeElement !== hMode && typeof s.hybridMode === 'string') hMode.value = s.hybridMode;
+                const curMode = hMode ? hMode.value : 'optin_threshold';
+                const hybRow = document.getElementById('ri-hybrid-row'), hybAbove = document.getElementById('ri-hybrid-above-row');
+                if (hybRow) hybRow.style.display = isHyb ? '' : 'none';
+                if (hybAbove) hybAbove.style.display = (isHyb && curMode !== 'no_threshold') ? '' : 'none';
+                const _setIf = (id, val) => { const el = document.getElementById(id); if (el && document.activeElement !== el && typeof val === 'string') el.value = val; };
+                _setIf('ri-hth', s.hybridThreshold); _setIf('ri-hao', s.hybridAboveOrders); _setIf('ri-hav', s.hybridAboveAov);
+            }
             const m = document.getElementById('ri-merchant');
             if (m && document.activeElement !== m && typeof s.merchantName === 'string') m.value = s.merchantName;
             const sc = document.getElementById('ri-saved-count');
