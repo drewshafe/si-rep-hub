@@ -717,6 +717,7 @@
                     <div class="ri-btn-row" style="margin-top:5px;">
                         <button class="ri-btn" id="ri-cloud-folders" style="flex:1;">☁ Cloud Folders</button>
                     </div>
+                    <input class="ri-field" id="ri-cloud-search" placeholder="🔎 Search merchant or scenario…" style="display:none;margin-top:5px;font-size:0.72em;">
                     <div class="ri-saved-list" id="ri-cloud-list"></div>
                 </div>
                 <div class="ri-subnav">
@@ -866,7 +867,8 @@
                 const list = p.querySelector('#ri-cloud-list');
                 const open = !list.classList.contains('show');
                 list.classList.toggle('show', open);
-                if (!open) return;
+                const cs = p.querySelector('#ri-cloud-search');
+                if (!open) { if (cs) { cs.style.display = 'none'; cs.value = ''; } return; }
                 if (!window.SIsb) { list.innerHTML = '<div class="ri-saved-empty">Cloud module unavailable.</div>'; return; }
                 list.innerHTML = '<div class="ri-saved-empty">Loading…</div>';
                 try {
@@ -880,6 +882,25 @@
                     }
                     renderCloudFolders(await SIsb.listConfigs());
                 } catch (e) { list.innerHTML = '<div class="ri-saved-empty">' + (e && e.message || e) + '</div>'; }
+            });
+            // Filter the cloud folders by merchant or scenario name (a merchant-name match
+            // reveals all of that merchant's scenarios; empty query shows everything).
+            p.querySelector('#ri-cloud-search').addEventListener('input', (e) => {
+                const q = (e.target.value || '').trim().toLowerCase();
+                const list = p.querySelector('#ri-cloud-list');
+                list.querySelectorAll('.ri-cloud-group').forEach(g => {
+                    const header = g.querySelector('.ri-saved-actions');
+                    const mname = header ? header.textContent.toLowerCase() : '';
+                    const merchantHit = !!q && mname.indexOf(q) !== -1;
+                    let any = false;
+                    g.querySelectorAll('.ri-saved-item').forEach(it => {
+                        const name = ((it.querySelector('.ri-saved-name') || {}).textContent || '').toLowerCase();
+                        const match = !q || merchantHit || name.indexOf(q) !== -1;
+                        it.style.display = match ? '' : 'none';
+                        if (match) any = true;
+                    });
+                    g.style.display = any ? '' : 'none';
+                });
             });
             p.querySelector('#ri-pricing').addEventListener('change', e => sendApply({ pricing: e.target.value }));
             p.querySelector('#ri-minp').addEventListener('input', e => sendApply({ minPremium: e.target.value }));
@@ -992,6 +1013,8 @@
         function renderCloudFolders(rows) {
             const list = document.getElementById('ri-cloud-list');
             if (!list) return;
+            const _search = document.getElementById('ri-cloud-search');
+            if (_search) { _search.style.display = (rows && rows.length) ? '' : 'none'; _search.value = ''; }
             if (!rows || !rows.length) { list.innerHTML = '<div class="ri-saved-empty">No cloud calculators yet — use ☁ Cloud Save in the calculator.</div>'; return; }
             const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             const groups = {};
