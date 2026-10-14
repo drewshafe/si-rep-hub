@@ -1363,11 +1363,24 @@
             document.getElementById('ri-upfront-margin').textContent = fmtMoney(margin);
         }
         window.addEventListener('message', e => {
-            if (e.data && e.data.siHub === 'state') { repState = e.data; syncRepInputs(e.data); }
+            if (e.data && e.data.siHub === 'state') {
+                repState = e.data; syncRepInputs(e.data);
+                // Keep the inline Custom Build preview synced to the rep's live inputs + display.
+                if (_stackedTool === 'custom-build' && frames['custom-build'] && frames['custom-build'].contentWindow && typeof e.data.merchantLink === 'string' && e.data.merchantLink) {
+                    try { frames['custom-build'].contentWindow.postMessage({ siHub: 'repdata', link: e.data.merchantLink, display: repDisplay }, '*'); } catch (err) {}
+                }
+            }
             // Live branding sync: the stacked Custom Build styler posts its branding → relay
             // to the ROI calc above so it re-brands without a reload.
             if (e.data && e.data.siCB === 'branding' && frames['roi'] && frames['roi'].contentWindow) {
                 try { frames['roi'].contentWindow.postMessage({ siHub: 'branding', cfg: e.data.cfg }, '*'); } catch (err) {}
+            }
+            // Custom Build (stacked) finished loading and wants the calc's current data.
+            if (e.data && e.data.siCB === 'needData') {
+                if (repState && repState.merchantLink && frames['custom-build'] && frames['custom-build'].contentWindow) {
+                    try { frames['custom-build'].contentWindow.postMessage({ siHub: 'repdata', link: repState.merchantLink, display: repDisplay }, '*'); } catch (err) {}
+                }
+                sendApply({ command: 'requestState' }); // force a fresh emit → relayed to Custom Build
             }
         });
 
