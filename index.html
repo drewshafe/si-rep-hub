@@ -611,9 +611,9 @@
             { id: 'email-automation',  emoji: '✉️', logo: 'emailbranding_logo.png',  logoLight: 'emailbranding_logo.png',  name: 'Email Automation',    url: 'https://drewshafe.github.io/si-email-automation/', parent: 'preview' },
             { id: 'claim-wizard',      emoji: '🪄', logo: 'claimwiz_logo.png',       logoLight: 'claimwiz_logo.png',       name: 'Claim Wizard',        url: 'https://drewshafe.github.io/si-claim-wizard/',     parent: 'preview' },
             // "Other Calculators" — group header revealing its sub-tabs below.
-            { id: 'other',        emoji: '🧮', logo: 'othercalcs_logo.png', logoLight: 'othercalcs_logo_light.png', name: 'Other Calculators', group: true, children: ['self-insured', 'comparison', 'gorgias'] },
-            { id: 'self-insured', emoji: '🛡️', logo: 'diy_logo.png',        logoLight: 'diy_logo_light.png',       name: 'Self-Insured Calc',           url: 'https://drewshafe.github.io/si-self-insured-calculator/', parent: 'other' },
-            { id: 'comparison',   emoji: '⚖️', logo: 'competitor_logo.png', logoLight: 'competitor_logo_light.png', name: 'Competitor Comparison Calc',  url: 'https://drewshafe.github.io/si-comparison/', parent: 'other' },
+            { id: 'other',        emoji: '🧮', logo: 'othercalcs_logo.png', logoLight: 'othercalcs_logo_light.png', name: 'Other Calculators', group: true, children: ['gorgias'] },
+            // Self-Insured + Competitor Comparison calcs retired — merged into the ROI Builder's
+            // "Competitor" calc type (sidebar → Calc Type). Standalone repos kept but delisted.
             { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    logoLight: 'gorgias_logo_light.png',   name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/', parent: 'other' },
         ];
 
@@ -720,6 +720,14 @@
                     <input class="ri-field" id="ri-cloud-search" placeholder="🔎 Search merchant or scenario…" style="display:none;margin-top:5px;font-size:0.72em;">
                     <div class="ri-saved-list" id="ri-cloud-list"></div>
                 </div>
+                <!-- Calc Type (Core vs Competitor) — its own row above the sub-tabs. -->
+                <div class="ri-disp-row ri-calctype-row" style="margin-bottom:6px;">
+                    <span class="ri-lbl">Calc Type</span>
+                    <div class="ri-disp-btns" id="ri-calctype-btns">
+                        <button data-calctype="core" class="active">Core</button>
+                        <button data-calctype="comp">Competitor</button>
+                    </div>
+                </div>
                 <div class="ri-subnav">
                     <button class="ri-subtab active" data-pane="coverage">Coverage</button>
                     <button class="ri-subtab" data-pane="display">Display</button>
@@ -817,10 +825,10 @@
                 <!-- Pane: Display -->
                 <div class="ri-pane" data-pane="display">
                     <div class="ri-disp">
-                        <div class="ri-disp-row"><span class="ri-lbl">Size</span><div class="ri-disp-btns"><button data-disp="zoom" data-val="dec">−</button><span id="ri-zoom-val" class="ri-disp-val">100%</span><button data-disp="zoom" data-val="inc">+</button></div></div>
-                        <div class="ri-disp-row"><span class="ri-lbl">Text</span><div class="ri-disp-btns"><button data-disp="text" data-val="0.9">S</button><button data-disp="text" data-val="1">M</button><button data-disp="text" data-val="1.15">L</button></div></div>
                         <div class="ri-disp-row"><span class="ri-lbl">Density</span><div class="ri-disp-btns"><button data-disp="density" data-val="comfortable">Comfort</button><button data-disp="density" data-val="compact">Compact</button></div></div>
                         <div class="ri-disp-row"><span class="ri-lbl">Layout</span><div class="ri-disp-btns"><button data-disp="layout" data-val="auto">Auto</button><button data-disp="layout" data-val="split">Split</button><button data-disp="layout" data-val="stacked">Stacked</button></div></div>
+                        <div class="ri-disp-row"><span class="ri-lbl">Text</span><div class="ri-disp-btns"><button data-disp="text" data-val="0.9">S</button><button data-disp="text" data-val="1">M</button><button data-disp="text" data-val="1.15">L</button></div></div>
+                        <div class="ri-disp-row"><span class="ri-lbl">Size</span><div class="ri-disp-btns"><button data-disp="zoom" data-val="dec">−</button><span id="ri-zoom-val" class="ri-disp-val">100%</span><button data-disp="zoom" data-val="inc">+</button></div></div>
                     </div>
                 </div>`;
             hubCollapsibles(p);
@@ -982,6 +990,13 @@
                     else if (t === 'density') { repDisplay.density = v; }
                     else if (t === 'layout') { repDisplay.layout = v; }
                     saveDisplayPrefs(); syncDisplayUI(); sendDisplay();
+                });
+            });
+            // Calc Type (Core / Competitor) — drives the calc; its own row above the sub-tabs.
+            p.querySelectorAll('#ri-calctype-btns button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    p.querySelectorAll('#ri-calctype-btns button').forEach(b => b.classList.toggle('active', b === btn));
+                    sendApply({ calcType: btn.dataset.calctype });
                 });
             });
             setTimeout(syncDisplayUI, 0);
@@ -1282,6 +1297,10 @@
                 if (hybAbove) hybAbove.style.display = (isHyb && curMode !== 'no_threshold') ? '' : 'none';
                 const _setIf = (id, val) => { const el = document.getElementById(id); if (el && document.activeElement !== el && typeof val === 'string') el.value = val; };
                 _setIf('ri-hth', s.hybridThreshold); _setIf('ri-hao', s.hybridAboveOrders); _setIf('ri-hav', s.hybridAboveAov);
+            }
+            // Calc Type (Core / Competitor) — reflect the calc's current type.
+            if (typeof s.calcType === 'string') {
+                document.querySelectorAll('#ri-calctype-btns button').forEach(b => b.classList.toggle('active', b.dataset.calctype === (s.calcType === 'comp' ? 'comp' : 'core')));
             }
             const m = document.getElementById('ri-merchant');
             if (m && document.activeElement !== m && typeof s.merchantName === 'string') m.value = s.merchantName;
