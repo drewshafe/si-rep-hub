@@ -124,6 +124,17 @@
         /* ── ⚙ Customize tabs ── */
         .sidebar-footer { flex-wrap:wrap; }
         .nav-item .nav-ext { font-size:0.85em; opacity:0.6; margin-left:4px; }
+        .tc-row .tc-edit-btn { width:auto; padding:0 9px; }
+        .tc-edit { margin:-2px 0 4px; border:1px solid #c9cdf8; border-radius:10px; background:#f7f8ff; padding:12px; display:grid; grid-template-columns:70px 1fr; gap:8px; align-items:center; }
+        .tc-edit.is-kid { margin-left:26px; }
+        .tc-edit label { font-size:12px; font-weight:700; color:#4a4f6e; }
+        .tc-edit input, .tc-edit select { font:inherit; font-size:13px; border:1px solid #d8dbe8; border-radius:8px; padding:7px 9px; min-width:0; background:#fff; }
+        .tc-logo-box { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .tc-logo-prev { height:34px; max-width:170px; object-fit:contain; background:linear-gradient(135deg,#4a5fc1,#6b7fd7); border-radius:6px; padding:4px 8px; }
+        .tc-edit .tc-mini { font:inherit; font-size:12px; font-weight:700; border:1px solid #d8dbe8; background:#fff; color:#4a4f6e; border-radius:6px; padding:5px 9px; cursor:pointer; }
+        .tc-edit .tc-edit-actions { grid-column:1/-1; display:flex; gap:8px; justify-content:flex-end; }
+        .tc-edit .tc-edit-actions .tc-save { background:#4a5fc1; border-color:#4a5fc1; color:#fff; }
+        .tc-edit .tc-edit-actions .tc-reset1 { margin-right:auto; color:#c0392b; border-color:#f1c6c0; }
         .tc-row select { font:inherit; font-size:12px; border:1px solid #d8dbe8; border-radius:6px; padding:4px 6px; background:#fff; color:#4a4f6e; }
         .tabs-cust-btn { display:block; flex:0 0 100%; width:100%; margin:0 0 8px; padding:7px 10px; border-radius:8px; border:1px dashed rgba(255,255,255,0.45); background:transparent; color:#fff; font:inherit; font-size:1.08em; font-weight:700; cursor:pointer; text-align:left; }
         .tabs-cust-btn:hover { background:rgba(255,255,255,0.12); border-style:solid; }
@@ -497,14 +508,15 @@
         body.pm .nav-logo { filter:brightness(0) invert(1) opacity(.92); }
         body.pm .nav-item.active .nav-logo { filter:brightness(0) invert(1) sepia(1) saturate(3) hue-rotate(3deg) opacity(.95); }
         /* Project Midnight — real holographic/marble tab logos (shown in full colour, unfiltered) */
-        body.pm #nav-roi .nav-logo      { content:url("midnight_mastercalctab.png")      !important; filter:none !important; max-width:200px; max-height:44px; }
-        body.pm #nav-proposal .nav-logo { content:url("midnight_proposaltab.png")        !important; filter:none !important; max-width:200px; max-height:44px; }
-        body.pm #nav-preview .nav-logo  { content:url("midnight_previewdesignertab.png") !important; filter:none !important; max-width:200px; max-height:44px; }
-        body.pm #nav-vault .nav-logo    { content:url("merchantvault_logo_light.png")    !important; filter:none !important; max-width:190px; max-height:42px; }
+        body.pm #nav-roi:not(.custom-look) .nav-logo      { content:url("midnight_mastercalctab.png")      !important; filter:none !important; max-width:200px; max-height:44px; }
+        body.pm #nav-proposal:not(.custom-look) .nav-logo { content:url("midnight_proposaltab.png")        !important; filter:none !important; max-width:200px; max-height:44px; }
+        body.pm #nav-preview:not(.custom-look) .nav-logo  { content:url("midnight_previewdesignertab.png") !important; filter:none !important; max-width:200px; max-height:44px; }
+        body.pm #nav-vault:not(.custom-look) .nav-logo    { content:url("merchantvault_logo_light.png")    !important; filter:none !important; max-width:190px; max-height:42px; }
         /* Preview Designer sub-tabs — holographic Midnight logos */
-        body.pm #nav-widget-designer .nav-logo  { content:url("midnight_checkoutexppre.png") !important; filter:none !important; max-width:165px; max-height:36px; }
-        body.pm #nav-email-automation .nav-logo { content:url("midnight_emailexp.png")        !important; filter:none !important; max-width:165px; max-height:36px; }
-        body.pm #nav-claim-wizard .nav-logo     { content:url("midnight_claimsexp.png")       !important; filter:none !important; max-width:165px; max-height:36px; }
+        body.pm #nav-widget-designer:not(.custom-look) .nav-logo  { content:url("midnight_checkoutexppre.png") !important; filter:none !important; max-width:165px; max-height:36px; }
+        body.pm #nav-email-automation:not(.custom-look) .nav-logo { content:url("midnight_emailexp.png")        !important; filter:none !important; max-width:165px; max-height:36px; }
+        body.pm #nav-claim-wizard:not(.custom-look) .nav-logo     { content:url("midnight_claimsexp.png")       !important; filter:none !important; max-width:165px; max-height:36px; }
+        body.pm .nav-item.custom-look .nav-logo { filter:none; }
         body.pm .nav-item .key-hint { color:#e9c46a; opacity:.6; border-color:rgba(233,196,106,.4); }
         body.pm .nav-item.active .key-hint { color:#f5d67b; opacity:.9; }
         body.pm .nav-group.expanded { background:linear-gradient(150deg,#20212b,#0e0f16); border-color:rgba(233,196,106,.35); }
@@ -651,14 +663,28 @@
         // Proposal & MSA Generator is off by default but still loads behind the ROI Builder's
         // "Proposal" sub-tab (stacked view), so it stays in TOOLS.
         const LAYOUT_KEY = 'si_hub_layout';
-        const DEFAULT_LAYOUT = () => ({ order: ['roi', 'vault', 'preview', 'proposal', 'gorgias'], off: ['proposal', 'gorgias'], custom: [],
+        const DEFAULT_LAYOUT = () => ({ order: ['roi', 'vault', 'preview', 'proposal', 'gorgias'], off: ['proposal', 'gorgias'], custom: [], look: {},
                                         kids: { preview: ['widget-designer', 'email-automation', 'claim-wizard'] } });
         let layout = (() => { try { return Object.assign(DEFAULT_LAYOUT(), JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null') || {}); } catch (e) { return DEFAULT_LAYOUT(); } })();
+        if (!layout.look) layout.look = {};
         const saveLayout = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
         // ext: open in its own browser tab instead of inside the hub (sites that block framing,
         // or need Google / SSO sign-in, which refuses to run inside a frame).
         const customTool = c => ({ id: c.id, emoji: c.emoji || '🔗', name: c.name, url: c.url, parent: c.parent || undefined, custom: true, ext: !!c.ext });
         (layout.custom || []).forEach(c => TOOLS.push(customTool(c)));
+        // Per-tab look (name, emoji, logo or text) — layout.look[id] = {name, emoji, mode:'logo'|'text', logo:dataURL}
+        const ORIG = {};
+        const snapOrig = t => { if (!ORIG[t.id]) ORIG[t.id] = { name: t.name, emoji: t.emoji, logo: t.logo || null, logoLight: t.logoLight || null }; };
+        function applyLook(t) {
+            snapOrig(t);
+            const o = ORIG[t.id], L = (layout.look || {})[t.id] || {};
+            t.name = L.name || o.name; t.emoji = L.emoji || o.emoji;
+            if (L.mode === 'text') { t.logo = null; t.logoLight = null; }
+            else if (L.logo) { t.logo = L.logo; t.logoLight = L.logo; }
+            else { t.logo = o.logo; t.logoLight = o.logoLight; }
+            t.customLook = !!(L.logo || L.mode === 'text');
+        }
+        TOOLS.forEach(applyLook);
         const isOff = id => (layout.off || []).includes(id);
         // Top-level tabs in the rep's order (anything new/unknown appended), and a group's children likewise.
         const topTools = () => {
@@ -688,14 +714,15 @@
             const addBtn = (tool, into) => {
                 const i = RENDERED.length; RENDERED.push(tool);
                 const btn = document.createElement('button');
-                btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '') + (tool.group ? ' nav-group' : '') + (tool.parent ? ' nav-sub-item' : '');
+                btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '') + (tool.group ? ' nav-group' : '') + (tool.parent ? ' nav-sub-item' : '') + (tool.customLook ? ' custom-look' : '');
                 btn.id = 'nav-' + tool.id;
                 const caret = tool.group ? '<span class="group-caret">▾</span>' : '';
                 const hint = i < 9 ? `<span class="key-hint">${i + 1}</span>` : '';
                 btn.innerHTML = tool.logo
-                    ? `<img class="nav-logo" src="${tool.logoLight || tool.logo}" alt="${tool.name}">${caret}${hint}`
-                    : `<span class="emoji">${tool.emoji}</span><span class="nav-name"></span>${caret}${hint}`;
-                if (!tool.logo) btn.querySelector('.nav-name').textContent = tool.name;
+                    ? `<img class="nav-logo">${caret}${hint}`
+                    : `<span class="emoji"></span><span class="nav-name"></span>${caret}${hint}`;
+                if (tool.logo) { const im = btn.querySelector('.nav-logo'); im.src = tool.logoLight || tool.logo; im.alt = tool.name; }
+                else { btn.querySelector('.emoji').textContent = tool.emoji; btn.querySelector('.nav-name').textContent = tool.name; }
                 if (tool.ext) {
                     btn.title = tool.name + ' — opens in a new browser tab';
                     btn.querySelector('.nav-name') && btn.querySelector('.nav-name').insertAdjacentHTML('afterend', '<span class="nav-ext">↗</span>');
@@ -1613,7 +1640,7 @@
             const back = document.createElement('div');
             back.className = 'tc-back';
             back.innerHTML = '<div class="tc-modal" role="dialog" aria-label="Customize tabs"><h3>Customize tabs</h3>' +
-                '<p class="tc-sub">Reorder with ↑ ↓, switch tabs on or off, or add your own. Saved for you in this browser.</p>' +
+                '<p class="tc-sub">Reorder with ↑ ↓, switch tabs on or off, rename or re-logo any tab with ✎ Edit, or add your own. Saved for you in this browser.</p>' +
                 '<div class="tc-list" id="tcList"></div>' +
                 '<div class="tc-add"><div class="tc-h">Add a tab</div>' +
                 '<input id="tcEmoji" maxlength="4" placeholder="🔗" aria-label="Icon"><input id="tcName" placeholder="Tab name (e.g. Pricing sheet)" aria-label="Tab name">' +
@@ -1626,13 +1653,30 @@
                 '<div class="tc-actions"><button type="button" class="tc-reset" id="tcReset">Reset to default</button><button type="button" class="tc-primary" id="tcDone">Done</button></div></div>';
             document.body.appendChild(back);
             const list = back.querySelector('#tcList');
+            let editing = null, pendingLogo;   // pendingLogo: undefined = unchanged, null = back to original, dataURL = upload
             const esc = v => String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
             const rowHtml = (t, i, n, kid) => '<div class="tc-row' + (isOff(t.id) ? ' is-off' : '') + (kid ? ' is-kid' : '') + '" data-id="' + t.id + '"' + (kid ? ' data-group="' + t.parent + '"' : '') + '>' +
                 '<button type="button" data-mv="-1" title="Move up"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-mv="1" title="Move down"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
                 '<span class="tc-name">' + esc((t.emoji || '') + ' ' + t.name) + '</span>' + (t.custom ? '<span class="tc-tag">Custom</span>' +
                     '<select data-ext title="Where this tab opens"><option value="">In the hub</option><option value="1"' + (t.ext ? ' selected' : '') + '>New browser tab</option></select>' : '') +
                 '<label class="tc-sw"><input type="checkbox" data-show' + (isOff(t.id) ? '' : ' checked') + '> Show</label>' +
-                (t.custom ? '<button type="button" class="tc-del" data-del title="Delete this tab">✕</button>' : '') + '</div>';
+                '<button type="button" class="tc-edit-btn" data-edit title="Change name, icon or logo">✎ Edit</button>' +
+                (t.custom ? '<button type="button" class="tc-del" data-del title="Delete this tab">✕</button>' : '') + '</div>' +
+                (editing === t.id ? editHtml(t, kid) : '');
+            const editHtml = (t, kid) => {
+                const o = ORIG[t.id] || {}, L = layout.look[t.id] || {};
+                const logo = L.logo || o.logo;
+                return '<div class="tc-edit' + (kid ? ' is-kid' : '') + '" data-for="' + t.id + '">' +
+                    '<label>Name</label><input data-f="name" value="' + esc(t.name) + '">' +
+                    '<label>Icon</label><input data-f="emoji" maxlength="4" value="' + esc(t.emoji || '') + '" placeholder="emoji">' +
+                    (t.custom ? '<label>Link</label><input data-f="url" value="' + esc(t.url) + '">' : '') +
+                    '<label>Show as</label><select data-f="mode"><option value="logo"' + (L.mode !== 'text' && logo ? ' selected' : '') + (logo ? '' : ' disabled') + '>Logo</option><option value="text"' + (L.mode === 'text' || !logo ? ' selected' : '') + '>Text (icon + name)</option></select>' +
+                    '<label>Logo</label><div class="tc-logo-box">' + (logo ? '<img class="tc-logo-prev" data-prev src="' + esc(logo) + '" alt="">' : '<span style="font-size:12px;color:#6b7090" data-prev>No logo yet</span>') +
+                    '<button type="button" class="tc-mini" data-up>Upload logo</button>' + (L.logo && o.logo ? '<button type="button" class="tc-mini" data-orig>Use original logo</button>' : '') +
+                    '<input type="file" accept="image/*" data-file hidden></div>' +
+                    '<div class="tc-edit-actions">' + (!t.custom ? '<button type="button" class="tc-mini tc-reset1" data-reset1>Reset this tab</button>' : '') +
+                    '<button type="button" class="tc-mini" data-cancel>Cancel</button><button type="button" class="tc-mini tc-save" data-save>Save</button></div></div>';
+            };
             const paint = () => {
                 const tops = topTools();
                 list.innerHTML = tops.map((t, i) => rowHtml(t, i, tops.length, false) + (t.group ? kidTools(t).map((k, j, a) => rowHtml(k, j, a.length, true)).join('') : '')).join('');
@@ -1642,8 +1686,52 @@
                 TOOLS.filter(t => t.group).forEach(g => { layout.kids[g.id] = kidTools(g).map(k => k.id); });
                 saveLayout(); renderNav(); paint();
             };
-            list.addEventListener('click', e => {
+            // Uploaded logos are shrunk to fit the sidebar (max 400×100) and kept as a small PNG.
+            const shrinkLogo = file => new Promise((res, rej) => {
+                const fr = new FileReader();
+                fr.onerror = rej;
+                fr.onload = () => { const im = new Image(); im.onerror = rej; im.onload = () => {
+                    const k = Math.min(1, 400 / im.naturalWidth, 100 / im.naturalHeight), c = document.createElement('canvas');
+                    c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+                    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/png'));
+                }; im.src = fr.result; };
+                fr.readAsDataURL(file);
+            });
+            list.addEventListener('click', async e => {
+                const ed = e.target.closest('.tc-edit');
+                if (ed) {
+                    const id = ed.dataset.for, t = TOOLS.find(x => x.id === id), o = ORIG[id] || {};
+                    if (e.target.closest('[data-up]')) { ed.querySelector('[data-file]').click(); return; }
+                    if (e.target.closest('[data-orig]')) { pendingLogo = null; const pv = ed.querySelector('[data-prev]'); if (pv && o.logo) pv.src = o.logo; return; }
+                    if (e.target.closest('[data-cancel]')) { editing = null; pendingLogo = undefined; return paint(); }
+                    if (e.target.closest('[data-reset1]')) { delete layout.look[id]; applyLook(t); editing = null; pendingLogo = undefined; return commit(); }
+                    if (e.target.closest('[data-save]')) {
+                        const v = f => (ed.querySelector('[data-f="' + f + '"]') || {}).value;
+                        const L = Object.assign({}, layout.look[id]);
+                        const name = (v('name') || '').trim(), emoji = (v('emoji') || '').trim();
+                        if (t.custom) {
+                            const c = layout.custom.find(x => x.id === id);
+                            let url = (v('url') || '').trim(); if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+                            if (c) { if (name) c.name = name; if (emoji) c.emoji = emoji; if (url) { c.url = url; t.url = url; if (frames[id]) { frames[id].remove(); delete frames[id]; } } }
+                            ORIG[id] = { name: c ? c.name : t.name, emoji: c ? c.emoji : t.emoji, logo: null, logoLight: null };
+                            delete L.name; delete L.emoji;
+                        } else {
+                            if (name && name !== o.name) L.name = name; else delete L.name;
+                            if (emoji && emoji !== o.emoji) L.emoji = emoji; else delete L.emoji;
+                        }
+                        if (pendingLogo === null) delete L.logo; else if (pendingLogo) L.logo = pendingLogo;
+                        L.mode = v('mode') === 'text' || !(L.logo || o.logo) ? 'text' : 'logo';
+                        if (L.mode === 'logo' && !L.logo) delete L.mode;   // original logo = the default look
+                        if (Object.keys(L).length) layout.look[id] = L; else delete layout.look[id];
+                        applyLook(t);
+                        if (activeId === id) toolbarTitle.textContent = t.emoji + ' ' + t.name;
+                        editing = null; pendingLogo = undefined;
+                        return commit();
+                    }
+                    return;
+                }
                 const row = e.target.closest('.tc-row'); if (!row) return;
+                if (e.target.closest('[data-edit]')) { editing = editing === row.dataset.id ? null : row.dataset.id; pendingLogo = undefined; return paint(); }
                 const id = row.dataset.id, grp = row.dataset.group;
                 const mv = e.target.closest('[data-mv]');
                 if (mv) {
@@ -1664,7 +1752,18 @@
                     commit();
                 }
             });
-            list.addEventListener('change', e => {
+            list.addEventListener('change', async e => {
+                if (e.target.matches('[data-file]')) {
+                    const f = e.target.files[0]; if (!f) return;
+                    try {
+                        pendingLogo = await shrinkLogo(f);
+                        const box = e.target.closest('.tc-logo-box'), pv = box.querySelector('[data-prev]');
+                        if (pv && pv.tagName === 'IMG') pv.src = pendingLogo; else if (pv) pv.outerHTML = '<img class="tc-logo-prev" data-prev src="' + pendingLogo + '" alt="">';
+                        const sel = e.target.closest('.tc-edit').querySelector('[data-f="mode"]');
+                        sel.querySelector('option[value="logo"]').disabled = false; sel.value = 'logo';
+                    } catch (x) { alert('Could not read that image.'); }
+                    return;
+                }
                 if (e.target.matches('[data-ext]')) {
                     const id = e.target.closest('.tc-row').dataset.id, ext = e.target.value === '1';
                     const t = TOOLS.find(x => x.id === id), c = (layout.custom || []).find(x => x.id === id);
@@ -1688,7 +1787,7 @@
                 err.textContent = '';
                 const c = { id: 'c-' + Math.random().toString(36).slice(2, 8), name: name, url: url, emoji: back.querySelector('#tcEmoji').value.trim() || '🔗', parent: back.querySelector('#tcWhere').value || '', ext: back.querySelector('#tcExt').value === '1' };
                 layout.custom = (layout.custom || []).concat(c);
-                TOOLS.push(customTool(c));
+                const nt = customTool(c); TOOLS.push(nt); applyLook(nt);
                 ['#tcName', '#tcUrl', '#tcEmoji'].forEach(sel => back.querySelector(sel).value = '');
                 commit();
             });
@@ -1696,6 +1795,7 @@
                 if (!confirm('Reset the sidebar to the default tabs? Your custom tabs will be removed.')) return;
                 TOOLS.filter(t => t.custom).forEach(t => { if (frames[t.id]) { frames[t.id].remove(); delete frames[t.id]; } TOOLS.splice(TOOLS.indexOf(t), 1); });
                 layout = DEFAULT_LAYOUT();
+                TOOLS.forEach(applyLook);
                 commit();
             });
             const close = () => { back.remove(); document.removeEventListener('keydown', onKey); };
