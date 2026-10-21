@@ -121,6 +121,35 @@
             color: rgba(255,255,255,0.6);
         }
 
+        /* ── ⚙ Customize tabs ── */
+        .sidebar-footer { flex-wrap:wrap; }
+        .tabs-cust-btn { display:block; flex:0 0 100%; width:100%; margin:0 0 8px; padding:7px 10px; border-radius:8px; border:1px dashed rgba(255,255,255,0.45); background:transparent; color:#fff; font:inherit; font-size:1.08em; font-weight:700; cursor:pointer; text-align:left; }
+        .tabs-cust-btn:hover { background:rgba(255,255,255,0.12); border-style:solid; }
+        .tc-back { position:fixed; inset:0; z-index:500; background:rgba(14,16,40,0.45); display:flex; align-items:center; justify-content:center; padding:20px; }
+        .tc-modal { width:min(560px, 100%); max-height:calc(100vh - 40px); overflow:auto; background:#fff; color:#1d2240; border-radius:16px; box-shadow:0 24px 70px rgba(0,0,0,0.35); padding:22px 22px 18px; font-size:14px; }
+        .tc-modal h3 { font-size:18px; margin:0 0 4px; }
+        .tc-modal .tc-sub { color:#6b7090; font-size:12.5px; margin:0 0 14px; line-height:1.45; }
+        .tc-list { display:flex; flex-direction:column; gap:6px; }
+        .tc-row { display:flex; align-items:center; gap:8px; border:1px solid #e3e5f2; border-radius:10px; padding:7px 10px; background:#fafbff; }
+        .tc-row.is-off { opacity:0.55; }
+        .tc-row.is-kid { margin-left:26px; background:#fff; }
+        .tc-row .tc-name { flex:1; min-width:0; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .tc-row .tc-tag { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#4a5fc1; background:#eef0ff; border-radius:20px; padding:2px 7px; }
+        .tc-row button { font:inherit; border:1px solid #d8dbe8; background:#fff; border-radius:6px; width:28px; height:28px; cursor:pointer; color:#4a4f6e; }
+        .tc-row button:disabled { opacity:.3; cursor:default; }
+        .tc-row .tc-del { color:#c0392b; border-color:#f1c6c0; }
+        .tc-sw { display:flex; align-items:center; gap:5px; font-size:12.5px; color:#4a4f6e; cursor:pointer; white-space:nowrap; }
+        .tc-add { margin-top:16px; border-top:1px solid #eceef6; padding-top:14px; display:grid; grid-template-columns:62px 1fr; gap:8px; }
+        .tc-add .tc-h { grid-column:1/-1; font-weight:700; font-size:13px; }
+        .tc-add input, .tc-add select { font:inherit; font-size:13px; border:1px solid #d8dbe8; border-radius:8px; padding:8px 10px; min-width:0; }
+        .tc-add .tc-full { grid-column:1/-1; }
+        .tc-add .tc-note { grid-column:1/-1; font-size:11.5px; color:#6b7090; }
+        .tc-err { grid-column:1/-1; color:#c0392b; font-size:12px; }
+        .tc-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+        .tc-actions button { font:inherit; font-weight:700; border-radius:8px; padding:9px 16px; cursor:pointer; border:1px solid #d8dbe8; background:#fff; color:#4a4f6e; }
+        .tc-actions .tc-primary { background:#4a5fc1; border-color:#4a5fc1; color:#fff; }
+        .tc-actions .tc-reset { margin-right:auto; color:#c0392b; border-color:#f1c6c0; }
+
         /* ── Main content ── */
         .main {
             flex: 1;
@@ -469,7 +498,6 @@
         body.pm #nav-roi .nav-logo      { content:url("midnight_mastercalctab.png")      !important; filter:none !important; max-width:200px; max-height:44px; }
         body.pm #nav-proposal .nav-logo { content:url("midnight_proposaltab.png")        !important; filter:none !important; max-width:200px; max-height:44px; }
         body.pm #nav-preview .nav-logo  { content:url("midnight_previewdesignertab.png") !important; filter:none !important; max-width:200px; max-height:44px; }
-        body.pm #nav-other .nav-logo    { content:url("midnight_othercalcstab.png")      !important; filter:none !important; max-width:200px; max-height:44px; }
         body.pm #nav-vault .nav-logo    { content:url("merchantvault_logo_light.png")    !important; filter:none !important; max-width:190px; max-height:42px; }
         /* Preview Designer sub-tabs — holographic Midnight logos */
         body.pm #nav-widget-designer .nav-logo  { content:url("midnight_checkoutexppre.png") !important; filter:none !important; max-width:165px; max-height:36px; }
@@ -571,7 +599,8 @@
             </div>
             <div class="nav" id="nav"></div>
             <div class="sidebar-footer">
-                <span>Press 1–7 to switch tools</span>
+                <button class="tabs-cust-btn" id="custTabsBtn" type="button" title="Reorder, hide or add sidebar tabs">⚙ Customize tabs</button>
+                <span id="keyHint">Press 1–5 to switch tools</span>
                 <label class="pm-switch" title="Project Midnight">
                     <input type="checkbox" id="pmToggle" onchange="toggleMidnight(this.checked)">
                     <span class="pm-track"></span> Project Midnight
@@ -610,12 +639,34 @@
             { id: 'widget-designer',   emoji: '🛒', logo: 'checkoutexp_logo.png',   logoLight: 'checkoutexp_logo.png',   name: 'Checkout Experience', url: 'https://drewshafe.github.io/si-widget-designer/',   parent: 'preview' },
             { id: 'email-automation',  emoji: '✉️', logo: 'emailbranding_logo.png',  logoLight: 'emailbranding_logo.png',  name: 'Email Automation',    url: 'https://drewshafe.github.io/si-email-automation/', parent: 'preview' },
             { id: 'claim-wizard',      emoji: '🪄', logo: 'claimwiz_logo.png',       logoLight: 'claimwiz_logo.png',       name: 'Claim Wizard',        url: 'https://drewshafe.github.io/si-claim-wizard/',     parent: 'preview' },
-            // "Other Calculators" — group header revealing its sub-tabs below.
-            { id: 'other',        emoji: '🧮', logo: 'othercalcs_logo.png', logoLight: 'othercalcs_logo_light.png', name: 'Other Calculators', group: true, children: ['gorgias'] },
-            // Self-Insured + Competitor Comparison calcs retired — merged into the ROI Builder's
-            // "Competitor" calc type (sidebar → Calc Type). Standalone repos kept but delisted.
-            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    logoLight: 'gorgias_logo_light.png',   name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/', parent: 'other' },
+            // Gorgias Calculator: off by default (the "Other Calculators" group is retired);
+            // reps can switch it back on in ⚙ Customize tabs. Self-Insured + Competitor
+            // Comparison were merged into the ROI Builder's "Competitor" calc type.
+            { id: 'gorgias',      emoji: '🤝', logo: 'gorgias_logo.png',    logoLight: 'gorgias_logo_light.png',   name: 'Gorgias Calculator',          url: 'https://drewshafe.github.io/si-gorgias-roi-calculator/' },
         ];
+
+        // ── Tab layout (per rep, this browser): order, shown/hidden, custom tabs ──
+        // Proposal & MSA Generator is off by default but still loads behind the ROI Builder's
+        // "Proposal" sub-tab (stacked view), so it stays in TOOLS.
+        const LAYOUT_KEY = 'si_hub_layout';
+        const DEFAULT_LAYOUT = () => ({ order: ['roi', 'vault', 'preview', 'proposal', 'gorgias'], off: ['proposal', 'gorgias'], custom: [],
+                                        kids: { preview: ['widget-designer', 'email-automation', 'claim-wizard'] } });
+        let layout = (() => { try { return Object.assign(DEFAULT_LAYOUT(), JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null') || {}); } catch (e) { return DEFAULT_LAYOUT(); } })();
+        const saveLayout = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
+        const customTool = c => ({ id: c.id, emoji: c.emoji || '🔗', name: c.name, url: c.url, parent: c.parent || undefined, custom: true });
+        (layout.custom || []).forEach(c => TOOLS.push(customTool(c)));
+        const isOff = id => (layout.off || []).includes(id);
+        // Top-level tabs in the rep's order (anything new/unknown appended), and a group's children likewise.
+        const topTools = () => {
+            const tops = TOOLS.filter(t => !t.hidden && !t.parent);
+            const known = (layout.order || []).map(id => tops.find(t => t.id === id)).filter(Boolean);
+            return known.concat(tops.filter(t => !known.includes(t)));
+        };
+        const kidTools = g => {
+            const kids = TOOLS.filter(t => t.parent === g.id && !t.hidden);
+            const known = ((layout.kids || {})[g.id] || []).map(id => kids.find(t => t.id === id)).filter(Boolean);
+            return known.concat(kids.filter(t => !known.includes(t)));
+        };
 
         const nav = document.getElementById('nav');
         const frameWrap = document.getElementById('frameWrap');
@@ -625,34 +676,51 @@
         const frames = {};
         let activeId = null;
 
-        const RENDERED = TOOLS.filter(t => !t.hidden);
-        RENDERED.forEach((tool, i) => {
-            const btn = document.createElement('button');
-            btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '') + (tool.group ? ' nav-group' : '') + (tool.parent ? ' nav-sub-item' : '');
-            btn.id = 'nav-' + tool.id;
-            const caret = tool.group ? '<span class="group-caret">▾</span>' : '';
-            btn.innerHTML = tool.logo
-                ? `<img class="nav-logo" src="${tool.logoLight || tool.logo}" alt="${tool.name}">${caret}<span class="key-hint">${i + 1}</span>`
-                : `<span class="emoji">${tool.emoji}</span><span>${tool.name}</span>${caret}<span class="key-hint">${i + 1}</span>`;
-            btn.addEventListener('click', () => activate(tool.id));
-            if (tool.parent) {
-                // Sub-tab: nest inside its group's collapsible container.
-                const sub = document.getElementById('nav-sub-' + tool.parent);
-                if (sub) sub.appendChild(btn);
-            } else {
-                nav.appendChild(btn);
+        let RENDERED = [];
+        let repInputsEl = null;
+        function renderNav() {
+            nav.innerHTML = '';
+            RENDERED = [];
+            const addBtn = (tool, into) => {
+                const i = RENDERED.length; RENDERED.push(tool);
+                const btn = document.createElement('button');
+                btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '') + (tool.group ? ' nav-group' : '') + (tool.parent ? ' nav-sub-item' : '');
+                btn.id = 'nav-' + tool.id;
+                const caret = tool.group ? '<span class="group-caret">▾</span>' : '';
+                const hint = i < 9 ? `<span class="key-hint">${i + 1}</span>` : '';
+                btn.innerHTML = tool.logo
+                    ? `<img class="nav-logo" src="${tool.logoLight || tool.logo}" alt="${tool.name}">${caret}${hint}`
+                    : `<span class="emoji">${tool.emoji}</span><span class="nav-name"></span>${caret}${hint}`;
+                if (!tool.logo) btn.querySelector('.nav-name').textContent = tool.name;
+                btn.addEventListener('click', () => activate(tool.id));
+                (into || nav).appendChild(btn);
+            };
+            topTools().filter(t => !isOff(t.id)).forEach(tool => {
+                if (tool.group) {
+                    // A group header gets an (initially collapsed) container holding its shown sub-tabs.
+                    const kids = kidTools(tool).filter(k => !isOff(k.id));
+                    if (!kids.length) return;
+                    tool.children = kids.map(k => k.id);
+                    addBtn(tool);
+                    const sub = document.createElement('div');
+                    sub.className = 'nav-sub';
+                    sub.id = 'nav-sub-' + tool.id;
+                    nav.appendChild(sub);
+                    kids.forEach(k => addBtn(k, sub));
+                } else {
+                    addBtn(tool);
+                    // The ROI Master Calculator tab has a "REP Inputs" sub-panel that drives
+                    // the calculator iframe live via postMessage (built once, kept across re-renders).
+                    if (tool.id === 'roi') { if (!repInputsEl) repInputsEl = buildRepInputs(); nav.appendChild(repInputsEl); }
+                }
+            });
+            const kh = document.getElementById('keyHint');
+            if (kh) kh.textContent = RENDERED.length ? 'Press 1–' + Math.min(9, RENDERED.length) + ' to switch tools' : '';
+            if (activeId) {
+                if (RENDERED.some(t => t.id === activeId)) paintNav(activeId);
+                else goDefault();
             }
-            // The ROI Master Calculator tab has a "REP Inputs" sub-panel that drives
-            // the calculator iframe live via postMessage.
-            if (tool.id === 'roi') nav.appendChild(buildRepInputs());
-            // A group header gets an (initially collapsed) container to hold its sub-tabs.
-            if (tool.group) {
-                const sub = document.createElement('div');
-                sub.className = 'nav-sub';
-                sub.id = 'nav-sub-' + tool.id;
-                nav.appendChild(sub);
-            }
-        });
+        }
 
         // ── REP Inputs panel (mirrors the calc's ShipInsure Inputs, drives it live) ──
         // Turn the sidebar's section headers into collapsible dropdowns so reps can hide
@@ -1395,6 +1463,23 @@
             });
         }
 
+        function paintNav(id) {
+            document.querySelectorAll('.nav-item').forEach(b => {
+                const isActive = b.id === 'nav-' + id;
+                b.classList.toggle('active', isActive);
+                const img = b.querySelector('.nav-logo');
+                if (img) {
+                    const t = TOOLS.find(t => 'nav-' + t.id === b.id);
+                    // A group header (Preview Designer) is never "active"; show its dark logo
+                    // whenever its section is open, matching the tabs' light→dark.
+                    const groupOpen = t && t.group && ((t.children || []).includes(id) || id === t.id);
+                    const wantSrc = (isActive || groupOpen) ? t.logo : (t.logoLight || t.logo);
+                    if (img.getAttribute('src') !== wantSrc) img.src = wantSrc;
+                }
+            });
+            setGroupsForActive(id);
+        }
+
         function _pmActive() { return document.body.classList.contains('pm'); }
         function _withTheme(url) { return _pmActive() ? url + (url.includes('?') ? '&' : '?') + 'theme=midnight' : url; }
         function activate(id, updateHash = true) {
@@ -1416,7 +1501,7 @@
             // Lazy-load iframe on first visit; keep it alive after (preserves entered data)
             if (!frames[id]) {
                 const f = document.createElement('iframe');
-                f.src = _withTheme(tool.url);
+                f.src = tool.custom ? tool.url : _withTheme(tool.url);
                 f.title = tool.name;
                 // Let the embedded calc copy the cloud share link to the clipboard
                 // (☁ Cloud Save). Same-origin, but set it explicitly to be safe.
@@ -1427,20 +1512,7 @@
             }
             Object.entries(frames).forEach(([k, f]) => f.classList.toggle('visible', k === id));
 
-            document.querySelectorAll('.nav-item').forEach(b => {
-                const isActive = b.id === 'nav-' + id;
-                b.classList.toggle('active', isActive);
-                const img = b.querySelector('.nav-logo');
-                if (img) {
-                    const t = TOOLS.find(t => 'nav-' + t.id === b.id);
-                    // A group header (Preview Designer / Other Calculators) is never "active";
-                    // show its dark logo whenever its section is open, matching the tabs' light→dark.
-                    const groupOpen = t && t.group && ((t.children || []).includes(id) || id === t.id);
-                    const wantSrc = (isActive || groupOpen) ? t.logo : (t.logoLight || t.logo);
-                    if (img.getAttribute('src') !== wantSrc) img.src = wantSrc;
-                }
-            });
-            setGroupsForActive(id);
+            paintNav(id);
             const rp = document.getElementById('repInputs');
             if (rp) rp.classList.toggle('show', id === 'roi');
             toolbarTitle.textContent = tool.emoji + ' ' + tool.name;
@@ -1503,7 +1575,7 @@
         });
 
         document.addEventListener('keydown', e => {
-            if (e.target.matches('input, textarea, select')) return;
+            if (e.target.matches('input, textarea, select') || document.querySelector('.tc-back')) return;
             const n = parseInt(e.key, 10);
             if (n >= 1 && n <= RENDERED.length) activate(RENDERED[n - 1].id);
         });
@@ -1528,8 +1600,99 @@
         }
 
         // Deep-linking: a valid #tool opens it directly; otherwise the default view.
+        // ── ⚙ Customize tabs: reorder, show/hide, add your own (saved per rep in this browser) ──
+        function openTabCustomizer() {
+            const back = document.createElement('div');
+            back.className = 'tc-back';
+            back.innerHTML = '<div class="tc-modal" role="dialog" aria-label="Customize tabs"><h3>Customize tabs</h3>' +
+                '<p class="tc-sub">Reorder with ↑ ↓, switch tabs on or off, or add your own. Saved for you in this browser.</p>' +
+                '<div class="tc-list" id="tcList"></div>' +
+                '<div class="tc-add"><div class="tc-h">Add a tab</div>' +
+                '<input id="tcEmoji" maxlength="4" placeholder="🔗" aria-label="Icon"><input id="tcName" placeholder="Tab name (e.g. Pricing sheet)" aria-label="Tab name">' +
+                '<input id="tcUrl" class="tc-full" placeholder="Link (https://…)" aria-label="Link">' +
+                '<select id="tcWhere" class="tc-full" aria-label="Where"><option value="">In the sidebar</option><option value="preview">Inside Preview Designer</option></select>' +
+                '<div class="tc-note">Some sites don’t allow being shown inside the hub — those still open with ↗ Open in New Tab.</div>' +
+                '<div class="tc-err" id="tcErr"></div>' +
+                '<button type="button" class="tc-full" id="tcAddBtn" style="font:inherit;font-weight:700;border-radius:8px;padding:9px;border:1px dashed #4a5fc1;background:#f5f6ff;color:#4a5fc1;cursor:pointer">＋ Add tab</button></div>' +
+                '<div class="tc-actions"><button type="button" class="tc-reset" id="tcReset">Reset to default</button><button type="button" class="tc-primary" id="tcDone">Done</button></div></div>';
+            document.body.appendChild(back);
+            const list = back.querySelector('#tcList');
+            const esc = v => String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const rowHtml = (t, i, n, kid) => '<div class="tc-row' + (isOff(t.id) ? ' is-off' : '') + (kid ? ' is-kid' : '') + '" data-id="' + t.id + '"' + (kid ? ' data-group="' + t.parent + '"' : '') + '>' +
+                '<button type="button" data-mv="-1" title="Move up"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-mv="1" title="Move down"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
+                '<span class="tc-name">' + esc((t.emoji || '') + ' ' + t.name) + '</span>' + (t.custom ? '<span class="tc-tag">Custom</span>' : '') +
+                '<label class="tc-sw"><input type="checkbox" data-show' + (isOff(t.id) ? '' : ' checked') + '> Show</label>' +
+                (t.custom ? '<button type="button" class="tc-del" data-del title="Delete this tab">✕</button>' : '') + '</div>';
+            const paint = () => {
+                const tops = topTools();
+                list.innerHTML = tops.map((t, i) => rowHtml(t, i, tops.length, false) + (t.group ? kidTools(t).map((k, j, a) => rowHtml(k, j, a.length, true)).join('') : '')).join('');
+            };
+            const commit = () => {
+                layout.order = topTools().map(t => t.id);
+                TOOLS.filter(t => t.group).forEach(g => { layout.kids[g.id] = kidTools(g).map(k => k.id); });
+                saveLayout(); renderNav(); paint();
+            };
+            list.addEventListener('click', e => {
+                const row = e.target.closest('.tc-row'); if (!row) return;
+                const id = row.dataset.id, grp = row.dataset.group;
+                const mv = e.target.closest('[data-mv]');
+                if (mv) {
+                    const arr = grp ? kidTools(TOOLS.find(t => t.id === grp)).map(k => k.id) : topTools().map(t => t.id);
+                    const i = arr.indexOf(id), j = i + Number(mv.dataset.mv);
+                    if (j < 0 || j >= arr.length) return;
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                    if (grp) layout.kids[grp] = arr; else layout.order = arr;
+                    commit();
+                }
+                if (e.target.closest('[data-del]')) {
+                    const t = TOOLS.find(x => x.id === id);
+                    if (!t || !confirm('Delete the “' + t.name + '” tab?')) return;
+                    TOOLS.splice(TOOLS.indexOf(t), 1);
+                    layout.custom = (layout.custom || []).filter(c => c.id !== id);
+                    layout.off = (layout.off || []).filter(x => x !== id);
+                    if (frames[id]) { frames[id].remove(); delete frames[id]; }
+                    commit();
+                }
+            });
+            list.addEventListener('change', e => {
+                if (!e.target.matches('[data-show]')) return;
+                const id = e.target.closest('.tc-row').dataset.id;
+                layout.off = (layout.off || []).filter(x => x !== id);
+                if (!e.target.checked) layout.off.push(id);
+                commit();
+            });
+            back.querySelector('#tcAddBtn').addEventListener('click', () => {
+                const name = back.querySelector('#tcName').value.trim();
+                let url = back.querySelector('#tcUrl').value.trim();
+                const err = back.querySelector('#tcErr');
+                if (!name) { err.textContent = 'Give the tab a name.'; return; }
+                if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+                try { new URL(url); } catch (x) { err.textContent = 'Paste a full link, like https://…'; return; }
+                err.textContent = '';
+                const c = { id: 'c-' + Math.random().toString(36).slice(2, 8), name: name, url: url, emoji: back.querySelector('#tcEmoji').value.trim() || '🔗', parent: back.querySelector('#tcWhere').value || '' };
+                layout.custom = (layout.custom || []).concat(c);
+                TOOLS.push(customTool(c));
+                ['#tcName', '#tcUrl', '#tcEmoji'].forEach(sel => back.querySelector(sel).value = '');
+                commit();
+            });
+            back.querySelector('#tcReset').addEventListener('click', () => {
+                if (!confirm('Reset the sidebar to the default tabs? Your custom tabs will be removed.')) return;
+                TOOLS.filter(t => t.custom).forEach(t => { if (frames[t.id]) { frames[t.id].remove(); delete frames[t.id]; } TOOLS.splice(TOOLS.indexOf(t), 1); });
+                layout = DEFAULT_LAYOUT();
+                commit();
+            });
+            const close = () => { back.remove(); document.removeEventListener('keydown', onKey); };
+            const onKey = e => { if (e.key === 'Escape') close(); };
+            document.addEventListener('keydown', onKey);
+            back.addEventListener('mousedown', e => { if (e.target === back) close(); });
+            back.querySelector('#tcDone').addEventListener('click', close);
+            paint();
+        }
+        document.getElementById('custTabsBtn').addEventListener('click', openTabCustomizer);
+
+        renderNav();
         const initial = location.hash.replace('#', '');
-        if (TOOLS.some(t => t.id === initial)) activate(initial, false);
+        if (TOOLS.some(t => t.id === initial && !t.group)) activate(initial, false);
         else goDefault(false);
 
         // ── Lock logo → home/reset + spin + Steamboat Willie whistle (audio only) ──
