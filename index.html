@@ -670,6 +670,9 @@
         const saveLayout = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
         // ext: open in its own browser tab instead of inside the hub (sites that block framing,
         // or need Google / SSO sign-in, which refuses to run inside a frame).
+        // Open an outside tab the way a clicked link would (target=_blank), so Chrome can hand it to an
+        // installed app that claims the link ("Open supported links" → the app's own window).
+        const openExternal = url => { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); };
         const customTool = c => ({ id: c.id, emoji: c.emoji || '🔗', name: c.name, url: c.url, parent: c.parent || undefined, custom: true, ext: !!c.ext });
         (layout.custom || []).forEach(c => TOOLS.push(customTool(c)));
         // Per-tab look (name, emoji, logo or text) — layout.look[id] = {name, emoji, mode:'logo'|'text', logo:dataURL}
@@ -727,7 +730,7 @@
                     btn.title = tool.name + ' — opens in a new browser tab';
                     btn.querySelector('.nav-name') && btn.querySelector('.nav-name').insertAdjacentHTML('afterend', '<span class="nav-ext">↗</span>');
                 }
-                btn.addEventListener('click', () => tool.ext ? window.open(tool.url, 'si-tab-' + tool.id) : activate(tool.id));
+                btn.addEventListener('click', () => tool.ext ? openExternal(tool.url) : activate(tool.id));
                 (into || nav).appendChild(btn);
             };
             topTools().filter(t => !isOff(t.id)).forEach(tool => {
@@ -1612,7 +1615,7 @@
         document.addEventListener('keydown', e => {
             if (e.target.matches('input, textarea, select') || document.querySelector('.tc-back')) return;
             const n = parseInt(e.key, 10);
-            if (n >= 1 && n <= RENDERED.length) { const t = RENDERED[n - 1]; if (t.ext) window.open(t.url, 'si-tab-' + t.id); else activate(t.id); }
+            if (n >= 1 && n <= RENDERED.length) { const t = RENDERED[n - 1]; if (t.ext) openExternal(t.url); else activate(t.id); }
         });
 
         // Default (no tab) view — nothing selected, landing shown.
