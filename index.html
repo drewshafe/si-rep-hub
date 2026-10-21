@@ -123,6 +123,8 @@
 
         /* ── ⚙ Customize tabs ── */
         .sidebar-footer { flex-wrap:wrap; }
+        .nav-item .nav-ext { font-size:0.85em; opacity:0.6; margin-left:4px; }
+        .tc-row select { font:inherit; font-size:12px; border:1px solid #d8dbe8; border-radius:6px; padding:4px 6px; background:#fff; color:#4a4f6e; }
         .tabs-cust-btn { display:block; flex:0 0 100%; width:100%; margin:0 0 8px; padding:7px 10px; border-radius:8px; border:1px dashed rgba(255,255,255,0.45); background:transparent; color:#fff; font:inherit; font-size:1.08em; font-weight:700; cursor:pointer; text-align:left; }
         .tabs-cust-btn:hover { background:rgba(255,255,255,0.12); border-style:solid; }
         .tc-back { position:fixed; inset:0; z-index:500; background:rgba(14,16,40,0.45); display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -653,7 +655,9 @@
                                         kids: { preview: ['widget-designer', 'email-automation', 'claim-wizard'] } });
         let layout = (() => { try { return Object.assign(DEFAULT_LAYOUT(), JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null') || {}); } catch (e) { return DEFAULT_LAYOUT(); } })();
         const saveLayout = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
-        const customTool = c => ({ id: c.id, emoji: c.emoji || '🔗', name: c.name, url: c.url, parent: c.parent || undefined, custom: true });
+        // ext: open in its own browser tab instead of inside the hub (sites that block framing,
+        // or need Google / SSO sign-in, which refuses to run inside a frame).
+        const customTool = c => ({ id: c.id, emoji: c.emoji || '🔗', name: c.name, url: c.url, parent: c.parent || undefined, custom: true, ext: !!c.ext });
         (layout.custom || []).forEach(c => TOOLS.push(customTool(c)));
         const isOff = id => (layout.off || []).includes(id);
         // Top-level tabs in the rep's order (anything new/unknown appended), and a group's children likewise.
@@ -692,7 +696,11 @@
                     ? `<img class="nav-logo" src="${tool.logoLight || tool.logo}" alt="${tool.name}">${caret}${hint}`
                     : `<span class="emoji">${tool.emoji}</span><span class="nav-name"></span>${caret}${hint}`;
                 if (!tool.logo) btn.querySelector('.nav-name').textContent = tool.name;
-                btn.addEventListener('click', () => activate(tool.id));
+                if (tool.ext) {
+                    btn.title = tool.name + ' — opens in a new browser tab';
+                    btn.querySelector('.nav-name') && btn.querySelector('.nav-name').insertAdjacentHTML('afterend', '<span class="nav-ext">↗</span>');
+                }
+                btn.addEventListener('click', () => tool.ext ? window.open(tool.url, 'si-tab-' + tool.id) : activate(tool.id));
                 (into || nav).appendChild(btn);
             };
             topTools().filter(t => !isOff(t.id)).forEach(tool => {
@@ -1577,7 +1585,7 @@
         document.addEventListener('keydown', e => {
             if (e.target.matches('input, textarea, select') || document.querySelector('.tc-back')) return;
             const n = parseInt(e.key, 10);
-            if (n >= 1 && n <= RENDERED.length) activate(RENDERED[n - 1].id);
+            if (n >= 1 && n <= RENDERED.length) { const t = RENDERED[n - 1]; if (t.ext) window.open(t.url, 'si-tab-' + t.id); else activate(t.id); }
         });
 
         // Default (no tab) view — nothing selected, landing shown.
@@ -1611,7 +1619,8 @@
                 '<input id="tcEmoji" maxlength="4" placeholder="🔗" aria-label="Icon"><input id="tcName" placeholder="Tab name (e.g. Pricing sheet)" aria-label="Tab name">' +
                 '<input id="tcUrl" class="tc-full" placeholder="Link (https://…)" aria-label="Link">' +
                 '<select id="tcWhere" class="tc-full" aria-label="Where"><option value="">In the sidebar</option><option value="preview">Inside Preview Designer</option></select>' +
-                '<div class="tc-note">Some sites don’t allow being shown inside the hub — those still open with ↗ Open in New Tab.</div>' +
+                '<select id="tcExt" class="tc-full" aria-label="Opens"><option value="">Opens inside the hub</option><option value="1">Opens in a new browser tab — for sites with Google / SSO sign-in</option></select>' +
+                '<div class="tc-note">Google and most single sign-on pages refuse to load inside the hub (you’ll see a 403). Pick “new browser tab” for those.</div>' +
                 '<div class="tc-err" id="tcErr"></div>' +
                 '<button type="button" class="tc-full" id="tcAddBtn" style="font:inherit;font-weight:700;border-radius:8px;padding:9px;border:1px dashed #4a5fc1;background:#f5f6ff;color:#4a5fc1;cursor:pointer">＋ Add tab</button></div>' +
                 '<div class="tc-actions"><button type="button" class="tc-reset" id="tcReset">Reset to default</button><button type="button" class="tc-primary" id="tcDone">Done</button></div></div>';
@@ -1620,7 +1629,8 @@
             const esc = v => String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
             const rowHtml = (t, i, n, kid) => '<div class="tc-row' + (isOff(t.id) ? ' is-off' : '') + (kid ? ' is-kid' : '') + '" data-id="' + t.id + '"' + (kid ? ' data-group="' + t.parent + '"' : '') + '>' +
                 '<button type="button" data-mv="-1" title="Move up"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-mv="1" title="Move down"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
-                '<span class="tc-name">' + esc((t.emoji || '') + ' ' + t.name) + '</span>' + (t.custom ? '<span class="tc-tag">Custom</span>' : '') +
+                '<span class="tc-name">' + esc((t.emoji || '') + ' ' + t.name) + '</span>' + (t.custom ? '<span class="tc-tag">Custom</span>' +
+                    '<select data-ext title="Where this tab opens"><option value="">In the hub</option><option value="1"' + (t.ext ? ' selected' : '') + '>New browser tab</option></select>' : '') +
                 '<label class="tc-sw"><input type="checkbox" data-show' + (isOff(t.id) ? '' : ' checked') + '> Show</label>' +
                 (t.custom ? '<button type="button" class="tc-del" data-del title="Delete this tab">✕</button>' : '') + '</div>';
             const paint = () => {
@@ -1655,6 +1665,13 @@
                 }
             });
             list.addEventListener('change', e => {
+                if (e.target.matches('[data-ext]')) {
+                    const id = e.target.closest('.tc-row').dataset.id, ext = e.target.value === '1';
+                    const t = TOOLS.find(x => x.id === id), c = (layout.custom || []).find(x => x.id === id);
+                    if (t) t.ext = ext; if (c) c.ext = ext;
+                    if (ext && frames[id]) { frames[id].remove(); delete frames[id]; if (activeId === id) goDefault(); }
+                    return commit();
+                }
                 if (!e.target.matches('[data-show]')) return;
                 const id = e.target.closest('.tc-row').dataset.id;
                 layout.off = (layout.off || []).filter(x => x !== id);
@@ -1669,7 +1686,7 @@
                 if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
                 try { new URL(url); } catch (x) { err.textContent = 'Paste a full link, like https://…'; return; }
                 err.textContent = '';
-                const c = { id: 'c-' + Math.random().toString(36).slice(2, 8), name: name, url: url, emoji: back.querySelector('#tcEmoji').value.trim() || '🔗', parent: back.querySelector('#tcWhere').value || '' };
+                const c = { id: 'c-' + Math.random().toString(36).slice(2, 8), name: name, url: url, emoji: back.querySelector('#tcEmoji').value.trim() || '🔗', parent: back.querySelector('#tcWhere').value || '', ext: back.querySelector('#tcExt').value === '1' };
                 layout.custom = (layout.custom || []).concat(c);
                 TOOLS.push(customTool(c));
                 ['#tcName', '#tcUrl', '#tcEmoji'].forEach(sel => back.querySelector(sel).value = '');
@@ -1692,7 +1709,7 @@
 
         renderNav();
         const initial = location.hash.replace('#', '');
-        if (TOOLS.some(t => t.id === initial && !t.group)) activate(initial, false);
+        if (TOOLS.some(t => t.id === initial && !t.group && !t.ext)) activate(initial, false);
         else goDefault(false);
 
         // ── Lock logo → home/reset + spin + Steamboat Willie whistle (audio only) ──
