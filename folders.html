@@ -65,6 +65,7 @@
   .row .rn { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .row .rm { font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .none { font-size:12.5px; color:var(--muted); padding:4px 0 2px; }
+  .sec h3 .docacts { margin-left:auto; display:flex; gap:6px; text-transform:none; letter-spacing:0; }
   .row .pick { flex:0 0 auto; width:16px; height:16px; cursor:pointer; accent-color:var(--accent); }
   .row .ord { flex:0 0 auto; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#fff; font-size:11px; font-weight:800; display:none; align-items:center; justify-content:center; }
   .row .ord.on { display:inline-flex; }
@@ -142,6 +143,8 @@
     { kind: 'email',    label: 'Email Automation',     tool: 'Email Automation' },
     { kind: 'claim',    label: 'Claim Wizard',         tool: 'Claim Wizard' },
   ];
+  // Sections where a rep can also file an existing document (upload or link) instead of generating one.
+  const DOC_KINDS = { proposal: 1, msa: 1, mnda: 1 };
   const SHORT = { roi: 'ROI', proposal: 'Proposal', msa: 'MSA', mnda: 'MNDA', checkout: 'Checkout', email: 'Email', claim: 'Claims' };
   const CALC = 'https://drewshafe.github.io/si-roi-calculator/';
 
@@ -222,8 +225,9 @@
     const it = itemsFor(f.id);
     $('sections').innerHTML = SECTIONS.map(s => {
       const rows = it[s.kind];
-      return '<div class="sec"><h3>' + esc(s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') + '</h3>' +
-        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — save from the ' + esc(s.tool) + ' tab.</div>') +
+      return '<div class="sec" data-sec="' + s.kind + '"><h3>' + esc(s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') +
+        (DOC_KINDS[s.kind] ? '<span class="docacts"><button class="btn small" type="button" data-act="upload" title="Upload an existing PDF or Word file">⬆ Upload</button><button class="btn small" type="button" data-act="addlink" title="File a link to an existing doc (e.g. Google Doc)">🔗 Add link</button></span>' : '') + '</h3>' +
+        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : 'save from the ' + esc(s.tool) + ' tab.') + '</div>') +
         (s.kind === 'roi' && rows.length ? '<div class="optbar' + (picks.length ? ' on' : '') + '"><span class="hint">Tick scenarios in the order you want their tabs</span>' +
           '<button class="btn small primary" type="button" data-act="optcopy">📋 Copy ' + (picks.length > 1 ? 'options link (' + picks.length + ')' : 'link') + '</button>' +
           '<button class="btn small" type="button" data-act="optopen" title="Open in a new window">↗</button></div>' : '') + '</div>';
@@ -237,6 +241,14 @@
         '<div class="rm">' + (r.updated_by === 'merchant' ? 'Merchant edited · ' : '') + esc(ago(r.updated_at)) + '</div></div>' +
         '<button class="btn small ghost" type="button" data-act="rename" title="Rename — also the tab label on a multi-option link">✎</button>' +
         '<button class="btn small primary" type="button" data-act="load">Load</button><button class="btn small" type="button" data-act="view" title="Open the branded proposal">↗</button></div>';
+    }
+    // Uploaded / linked docs have no form state to load — they just open.
+    if (r.source === 'upload' || r.source === 'link') {
+      return '<div class="row" data-kind="' + s.kind + '" data-id="' + esc(r.id) + '"><div class="rt"><div class="rn">' + (r.source === 'upload' ? '📎 ' : '🔗 ') + esc(r.title || 'Untitled') + '</div>' +
+        '<div class="rm">' + (r.source === 'upload' ? 'Uploaded' : 'Linked') + ' · ' + esc(who(r.updated_by_email || r.rep_email)) + ' · ' + esc(ago(r.updated_at)) + '</div></div>' +
+        '<button class="btn small ghost" type="button" data-act="rename" title="Rename">✎</button>' +
+        '<button class="btn small primary" type="button" data-act="opendoc">Open ↗</button>' +
+        '<button class="btn small ghost" type="button" data-act="del" title="Delete">✕</button></div>';
     }
     return '<div class="row" data-kind="' + s.kind + '" data-id="' + esc(r.id) + '"><div class="rt"><div class="rn">' + esc(r.title || 'Untitled') + '</div>' +
       '<div class="rm">' + esc(who(r.updated_by_email || r.rep_email)) + ' · ' + esc(ago(r.updated_at)) + '</div></div>' +
@@ -284,6 +296,7 @@
       return;
     }
     if (b.dataset.act === 'optopen' && picks.length) { window.open(optLink(), '_blank', 'noopener'); return; }
+    if (b.dataset.act === 'upload' || b.dataset.act === 'addlink') return addDoc(b.closest('[data-sec]').dataset.sec, b.dataset.act);
     const row = b.closest('.row'), kind = row.dataset.kind, id = row.dataset.id;
     if (b.dataset.act === 'pick') {
       const i = picks.indexOf(id);
@@ -292,6 +305,16 @@
     }
     if (b.dataset.act === 'rename') return renameRow(row, kind, id);
     const f = folders.find(x => x.id === openId);
+    if (b.dataset.act === 'opendoc') {
+      const a = assets.find(x => x.id === id); if (!a) return;
+      // Open the tab synchronously (popup blockers), then point it at the signed link.
+      const w = window.open('', '_blank');
+      try {
+        const url = a.source === 'upload' ? await SIsb.docLink(a.file_path) : a.doc_url;
+        if (w) { w.opener = null; w.location = url; } else location.href = url;
+      } catch (x) { if (w) w.close(); toast('Couldn’t open it: ' + (x.message || x)); }
+      return;
+    }
     if (b.dataset.act === 'view') { window.open(CALC + 'proposal.html?id=' + encodeURIComponent(id), '_blank', 'noopener'); return; }
     if (b.dataset.act === 'load') {
       // Loading from a folder makes it the active merchant, then the Hub opens the right tab.
@@ -309,11 +332,46 @@
         // RLS lets only the creator delete; a no-op delete means it belonged to someone else.
         const still = (await SIsb.listAssets(openId)).some(x => x.id === id);
         if (still) { toast('Only the rep who saved it can delete it'); return; }
+        if (a && a.file_path) { try { await SIsb.removeDoc(a.file_path); } catch (x) {} }
         assets = assets.filter(x => x.id !== id);
         renderDetail(); toast('Deleted');
       } catch (x) { toast('Couldn’t delete: ' + (x.message || x)); }
     }
   });
+
+  // File an existing Proposal / MSA / MNDA — upload a PDF/Word file or paste a link.
+  const MAX_DOC = 25 * 1024 * 1024;
+  function addDoc(kind, how) {
+    const f = folders.find(x => x.id === openId); if (!f) return;
+    const label = (SECTIONS.find(s => s.kind === kind) || {}).label || kind;
+    if (how === 'addlink') {
+      let url = (prompt('Paste the link to the existing ' + label + ' (e.g. a Google Doc):') || '').trim();
+      if (!url) return;
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      try { new URL(url); } catch (x) { toast('That doesn’t look like a link'); return; }
+      const title = (prompt('Name it:', f.name + ' ' + label) || '').trim() || (f.name + ' ' + label);
+      return saveDoc({ merchant_ref: f.id, kind: kind, title: title, doc_url: url, data: { source: 'link' } }, 'Linked');
+    }
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    inp.onchange = async () => {
+      const file = inp.files[0]; if (!file) return;
+      if (file.size > MAX_DOC) { toast('That file is over 25 MB'); return; }
+      toast('Uploading ' + file.name + '…');
+      try {
+        const meta = await SIsb.uploadDoc(file, f.id, kind);
+        await saveDoc({ merchant_ref: f.id, kind: kind, title: file.name.replace(/\.[^.]+$/, ''), doc_url: null, data: { source: 'upload', file: meta } }, 'Uploaded');
+      } catch (x) { toast('Couldn’t upload: ' + (x.message || x)); }
+    };
+    inp.click();
+  }
+  async function saveDoc(row, verb) {
+    try {
+      await SIsb.saveAsset(row);
+      assets = await SIsb.listAssets();
+      renderDetail(); toast(verb + ' to ' + ((folders.find(x => x.id === openId) || {}).name || 'the folder'));
+    } catch (x) { toast('Couldn’t save it: ' + (x.message || x)); }
+  }
 
   // Inline rename: the title turns into a text box — Enter/click away saves, Esc cancels.
   function renameRow(row, kind, id) {
