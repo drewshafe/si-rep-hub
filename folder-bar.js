@@ -6,7 +6,8 @@
 //     tool: 'Email Automation',
 //     before: document.querySelector('.wrap'),   // the bar is inserted before this element
 //     getData: () => ({...}),           // the tool's full state to save
-//     applyData: data => {...},         // restore a saved state
+//     applyData: (data, kind, row) => {...},   // restore a saved state
+//     acceptKinds: ['proposal','msa'],  // optional: other kinds this page can open via ?asset=
 //     defaultTitle: () => 'Email – Acme',
 //     shortLink: id => url              // optional; default = this page + ?asset=id
 //   });
@@ -46,7 +47,8 @@
   body.pm .sifb-cur b { color:#ece6d6; }
   body.pm .sifb-dd { background:#15151c; border-color:#2e2b22; }
   body.pm .sifb-dd .it:hover, body.pm .sifb-dd .it.cur { background:#1f1b10; }
-  body.view .sifb { display:none; }`;
+  body.view .sifb { display:none; }
+  @media print { .sifb, .sifb-toast { display:none !important; } }`;
 
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const initials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
@@ -118,9 +120,11 @@
     async function loadId(id, quiet) {
       try {
         const r = await SIsb.getAsset(id);
-        if (r.kind !== o.kind) throw new Error('That save is for a different tool');
-        o.applyData(r.data || {});
-        cur = { id: r.id, title: r.title, folder: r.merchant_ref, updated_at: r.updated_at };
+        if ((o.acceptKinds || [o.kind]).indexOf(r.kind) < 0) throw new Error('That save is for a different tool');
+        o.applyData(r.data || {}, r.kind, r);
+        // Only a save of this bar's own kind becomes the one Save updates (e.g. opening an
+        // MSA draft in the generator must not let Save overwrite it as a proposal).
+        cur = r.kind === o.kind ? { id: r.id, title: r.title, folder: r.merchant_ref, updated_at: r.updated_at } : null;
         // Opening a save makes its merchant the active one (reps only; merchants just view it).
         if (user) {
           const a = SIsb.getActiveFolder();
@@ -130,7 +134,8 @@
             SIsb.setActiveFolder({ id: r.merchant_ref, name: r.merchant, logo_path: logo });
           }
         }
-        setUrl(r.id); paint();
+        if (cur) setUrl(r.id);
+        paint();
         if (!quiet) toast('Loaded “' + r.title + '”');
       } catch (e) { toast('Couldn’t load: ' + (e.message || e)); }
     }
@@ -178,7 +183,7 @@
     const ready = SIsb.currentUser().then(u => { user = u; paint(); }, () => {});
     const want = new URLSearchParams(location.search).get('asset');
     if (want) ready.then(() => loadId(want, true));
-    return { save: save, load: loadId, current: () => cur };
+    return { save: save, load: loadId, current: () => cur, refresh: paint };
   }
 
   window.SIFolderBar = { mount: mount };
