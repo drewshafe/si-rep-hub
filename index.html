@@ -1562,6 +1562,8 @@
         window.addEventListener('message', e => {
             const d = e.data;
             if (!d || d.siHub !== 'folders') return;
+            // Any tool's folder bar can ask to open the Folders tab (to pick a merchant).
+            if (d.type === 'goto') { activate('folders'); return; }
             if (frames.folders && e.source !== frames.folders.contentWindow) return;
             paintActiveMerchant();
             if (d.type === 'openScenario' && d.id) {
@@ -1637,6 +1639,14 @@
                     const link = win && typeof win.mvMerchantLink === 'function' && win.mvMerchantLink();
                     if (link) url = link;
                 } catch (err) { /* not loaded yet — fall back to tool.url */ }
+            }
+            // Preview Designer tools saved to a merchant folder → their short ?asset= link.
+            if (['widget-designer', 'email-automation', 'claim-wizard'].includes(tool.id)) {
+                try {
+                    const w = frames[tool.id] && frames[tool.id].contentWindow;
+                    const short = w && typeof w.siFolderShortLink === 'function' && w.siFolderShortLink();
+                    if (short) { url = short; navigator.clipboard.writeText(url).then(() => { toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 1600); }); return; }
+                } catch (err) {}
             }
             // Claim Wizard: copy the branded claims-flow demo link.
             if (tool.id === 'claim-wizard') {
