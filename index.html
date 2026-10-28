@@ -173,6 +173,18 @@
         .tc-add .tc-full { grid-column:1/-1; }
         .tc-add .tc-note { grid-column:1/-1; font-size:11.5px; color:#6b7090; }
         .tc-err { grid-column:1/-1; color:#c0392b; font-size:12px; }
+        .tc-hub { margin-top:16px; border-top:1px solid #eceef6; padding-top:14px; display:grid; grid-template-columns:1fr auto; gap:8px 12px; align-items:center; }
+        .tc-hub .tc-h { grid-column:1/-1; font-weight:700; font-size:13px; }
+        .tc-hub > label:not(.tc-sw) { font-size:12.5px; color:#4a4f6e; }
+        .tc-hub .tc-sw { grid-column:1/-1; }
+        .tc-color { display:inline-flex; align-items:center; gap:6px; }
+        .tc-color input[type=color] { width:38px; height:28px; padding:2px; border:1px solid #d8dbe8; border-radius:6px; background:#fff; cursor:pointer; }
+        .tc-color.unset input[type=color] { opacity:.35; }
+        .tc-color .tc-clr { font:inherit; font-size:11.5px; font-weight:700; border:1px solid #d8dbe8; background:#fff; color:#4a4f6e; border-radius:6px; padding:4px 8px; cursor:pointer; min-width:64px; }
+        .tc-color.unset .tc-clr { color:#9aa0bd; cursor:default; }
+        .tc-size { display:flex; align-items:center; gap:8px; }
+        .tc-size input[type=range] { flex:1; accent-color:#4a5fc1; padding:0; border:0; }
+        .tc-size output { font-size:12px; font-weight:700; color:#4a4f6e; min-width:38px; }
         .tc-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
         .tc-actions button { font:inherit; font-weight:700; border-radius:8px; padding:9px 16px; cursor:pointer; border:1px solid #d8dbe8; background:#fff; color:#4a4f6e; }
         .tc-actions .tc-primary { background:#4a5fc1; border-color:#4a5fc1; color:#fff; }
@@ -531,6 +543,18 @@
            "body .nav … :not(#_)" lifts specificity above the per-tab Midnight logo rules (body.pm #nav-…:not(.custom-look) !important). */
         .nav-item:hover, .nav-item.active, .nav-item.nav-group.expanded { color:#fff; }
         body .nav .nav-item:hover .nav-logo:not(#_), body .nav .nav-item.active .nav-logo:not(#_), body .nav .nav-item.nav-group.expanded .nav-logo:not(#_) { filter:brightness(0) invert(1) !important; }
+        /* ── Tab Customizer looks (override the white rule only when a color is set) ──
+           has-c = idle color, has-hc = hover/open color. Logos are recolored with a mask
+           of the logo filled with currentColor, layered over the (hidden) logo image. */
+        body.hide-keyhints .nav-item .key-hint { display:none; }
+        .nav-logo-wrap { position:relative; display:inline-flex; flex-shrink:0; }
+        .nav-logo-tint { position:absolute; inset:0; display:none; background:currentColor; -webkit-mask:var(--logo) center/contain no-repeat; mask:var(--logo) center/contain no-repeat; }
+        body .nav .nav-item.has-c:not(:hover):not(.active):not(.expanded) { color:var(--tab-c); }
+        body .nav .nav-item.has-hc:is(:hover, .active, .expanded) { color:var(--tab-hc); }
+        body .nav .nav-item.has-c:not(:hover):not(.active):not(.expanded) .nav-logo-tint,
+        body .nav .nav-item.has-hc:is(:hover, .active, .expanded) .nav-logo-tint { display:block; }
+        body .nav .nav-item.has-c:not(:hover):not(.active):not(.expanded) .nav-logo:not(#_),
+        body .nav .nav-item.has-hc:is(:hover, .active, .expanded) .nav-logo:not(#_) { opacity:0; }
         body.pm .nav-group.expanded { background:linear-gradient(150deg,#20212b,#0e0f16); border-color:rgba(233,196,106,.35); }
         body.pm .nav-sub { border-left:2px solid rgba(233,196,106,.35); }
         body.pm .sidebar-footer { border-top:1px solid rgba(212,175,55,.22); color:#8a8a9c; }
@@ -734,6 +758,38 @@
 
         let RENDERED = [];
         let repInputsEl = null;
+        // Per-tab colors + size from ⚙ Customize tabs (tab's own look, else the hub-wide default).
+        function styleTab(btn, tool) {
+            const L = (layout.look || {})[tool.id] || {}, H = layout.hub || {};
+            const c = L.color || H.tabColor, hc = L.hoverColor || H.tabHoverColor;
+            btn.classList.toggle('has-c', !!c); btn.classList.toggle('has-hc', !!hc);
+            if (c) btn.style.setProperty('--tab-c', c);
+            if (hc) btn.style.setProperty('--tab-hc', hc);
+            const k = (Number(L.size) || 100) / 100;
+            if (k === 1) return;
+            const img = btn.querySelector('.nav-logo');
+            if (img) { img.style.maxWidth = Math.round((tool.parent ? 165 : 190) * k) + 'px'; img.style.maxHeight = Math.round((tool.parent ? 36 : 40) * k) + 'px'; }
+            else btn.style.fontSize = (0.9 * k).toFixed(3) + 'em';
+        }
+
+        // Hub-wide look: hide the 1–9 tab numbers, sidebar + main window backgrounds.
+        function applyHubLook() {
+            const H = layout.hub || {};
+            document.body.classList.toggle('hide-keyhints', !!H.hideNumbers);
+            let css = '';
+            if (H.sidebarBg) css += 'body .sidebar { background:' + H.sidebarBg + ' !important; }';
+            if (H.mainBg) {
+                const hex = H.mainBg.replace('#', ''), n = parseInt(hex.length === 3 ? hex.replace(/./g, '$&$&') : hex, 16);
+                const lum = (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255;
+                css += 'body .main, body .rh-landing, body .toolbar { background:' + H.mainBg + ' !important; }' +
+                    'body .toolbar-title, body .rh-landing { color:' + (lum < 0.55 ? '#f4f5fb' : '#1d2240') + ' !important; }';
+            }
+            let el = document.getElementById('hubLookCss');
+            if (!el) { el = document.createElement('style'); el.id = 'hubLookCss'; document.head.appendChild(el); }
+            el.textContent = css;
+        }
+        applyHubLook();
+
         function renderNav() {
             nav.innerHTML = '';
             RENDERED = [];
@@ -745,10 +801,14 @@
                 const caret = tool.group ? '<span class="group-caret">▾</span>' : '';
                 const hint = i < 9 ? `<span class="key-hint">${i + 1}</span>` : '';
                 btn.innerHTML = tool.logo
-                    ? `<img class="nav-logo">${caret}${hint}`
+                    ? `<span class="nav-logo-wrap"><img class="nav-logo"><span class="nav-logo-tint"></span></span>${caret}${hint}`
                     : `<span class="emoji"></span><span class="nav-name"></span>${caret}${hint}`;
-                if (tool.logo) { const im = btn.querySelector('.nav-logo'); im.src = tool.logoLight || tool.logo; im.alt = tool.name; }
+                if (tool.logo) {
+                    const im = btn.querySelector('.nav-logo'); im.src = tool.logoLight || tool.logo; im.alt = tool.name;
+                    btn.querySelector('.nav-logo-tint').style.setProperty('--logo', 'url("' + (tool.logoLight || tool.logo) + '")');
+                }
                 else { btn.querySelector('.emoji').textContent = tool.emoji; btn.querySelector('.nav-name').textContent = tool.name; }
+                styleTab(btn, tool);
                 if (tool.ext) {
                     btn.title = tool.name + ' — opens in a new browser tab';
                     btn.querySelector('.nav-name') && btn.querySelector('.nav-name').insertAdjacentHTML('afterend', '<span class="nav-ext">↗</span>');
@@ -1592,8 +1652,9 @@
             const back = document.createElement('div');
             back.className = 'tc-back';
             back.innerHTML = '<div class="tc-modal" role="dialog" aria-label="Customize tabs"><h3>Customize tabs</h3>' +
-                '<p class="tc-sub">Reorder with ↑ ↓, switch tabs on or off, rename or re-logo any tab with ✎ Edit, or add your own. Saved for you in this browser.</p>' +
+                '<p class="tc-sub">Reorder with ↑ ↓, switch tabs on or off, rename, re-logo, recolor or resize any tab with ✎ Edit, set sidebar &amp; window colors, or add your own. Saved for you in this browser.</p>' +
                 '<div class="tc-list" id="tcList"></div>' +
+                '<div class="tc-hub" id="tcHub"></div>' +
                 '<div class="tc-add"><div class="tc-h">Add a tab</div>' +
                 '<input id="tcEmoji" maxlength="4" placeholder="🔗" aria-label="Icon"><input id="tcName" placeholder="Tab name (e.g. Pricing sheet)" aria-label="Tab name">' +
                 '<input id="tcUrl" class="tc-full" placeholder="Link (https://…)" aria-label="Link">' +
@@ -1615,6 +1676,10 @@
                 '<button type="button" class="tc-edit-btn" data-edit title="Change name, icon or logo">✎ Edit</button>' +
                 (t.custom ? '<button type="button" class="tc-del" data-del title="Delete this tab">✕</button>' : '') + '</div>' +
                 (editing === t.id ? editHtml(t, kid) : '');
+            // Color picker that can be "unset" (falls back to the default shown on its button).
+            const colorCtl = (f, v, dflt) => '<span class="tc-color' + (v ? '' : ' unset') + '" data-color="' + f + '"><input type="color" data-f="' + f + '" value="' + esc(v || '#ffffff') + '">' +
+                '<button type="button" class="tc-clr" data-clr title="Back to default">' + (v ? 'Reset' : dflt) + '</button></span>';
+            const colorVal = box => box && !box.classList.contains('unset') ? box.querySelector('input').value : '';
             const editHtml = (t, kid) => {
                 const o = ORIG[t.id] || {}, L = layout.look[t.id] || {};
                 const logo = L.logo || o.logo;
@@ -1626,6 +1691,9 @@
                     '<label>Logo</label><div class="tc-logo-box">' + (logo ? '<img class="tc-logo-prev" data-prev src="' + esc(logo) + '" alt="">' : '<span style="font-size:12px;color:#6b7090" data-prev>No logo yet</span>') +
                     '<button type="button" class="tc-mini" data-up>Upload logo</button>' + (L.logo && o.logo ? '<button type="button" class="tc-mini" data-orig>Use original logo</button>' : '') +
                     '<input type="file" accept="image/*" data-file hidden></div>' +
+                    '<label>Color</label>' + colorCtl('color', L.color, 'Default') +
+                    '<label>Hover / open</label>' + colorCtl('hoverColor', L.hoverColor, 'White') +
+                    '<label>Size</label><div class="tc-size"><input type="range" data-f="size" min="60" max="160" step="5" value="' + (Number(L.size) || 100) + '"><output>' + (Number(L.size) || 100) + '%</output></div>' +
                     '<div class="tc-edit-actions">' + (!t.custom ? '<button type="button" class="tc-mini tc-reset1" data-reset1>Reset this tab</button>' : '') +
                     '<button type="button" class="tc-mini" data-cancel>Cancel</button><button type="button" class="tc-mini tc-save" data-save>Save</button></div></div>';
             };
@@ -1654,6 +1722,8 @@
                 if (ed) {
                     const id = ed.dataset.for, t = TOOLS.find(x => x.id === id), o = ORIG[id] || {};
                     if (e.target.closest('[data-up]')) { ed.querySelector('[data-file]').click(); return; }
+                    const clr = e.target.closest('[data-clr]');
+                    if (clr) { const box = clr.closest('[data-color]'); if (!box.classList.contains('unset')) { box.classList.add('unset'); clr.textContent = box.dataset.color === 'hoverColor' ? 'White' : 'Default'; } return; }
                     if (e.target.closest('[data-orig]')) { pendingLogo = null; const pv = ed.querySelector('[data-prev]'); if (pv && o.logo) pv.src = o.logo; return; }
                     if (e.target.closest('[data-cancel]')) { editing = null; pendingLogo = undefined; return paint(); }
                     if (e.target.closest('[data-reset1]')) { delete layout.look[id]; applyLook(t); editing = null; pendingLogo = undefined; return commit(); }
@@ -1672,6 +1742,8 @@
                             if (emoji && emoji !== o.emoji) L.emoji = emoji; else delete L.emoji;
                         }
                         if (pendingLogo === null) delete L.logo; else if (pendingLogo) L.logo = pendingLogo;
+                        ['color', 'hoverColor'].forEach(f => { const c = colorVal(ed.querySelector('[data-color="' + f + '"]')); if (c) L[f] = c; else delete L[f]; });
+                        const size = Number(v('size')) || 100; if (size !== 100) L.size = size; else delete L.size;
                         L.mode = v('mode') === 'text' || !(L.logo || o.logo) ? 'text' : 'logo';
                         if (L.mode === 'logo' && !L.logo) delete L.mode;   // original logo = the default look
                         if (Object.keys(L).length) layout.look[id] = L; else delete layout.look[id];
@@ -1703,6 +1775,11 @@
                     if (frames[id]) { frames[id].remove(); delete frames[id]; }
                     commit();
                 }
+            });
+            list.addEventListener('input', e => {
+                const box = e.target.closest('[data-color]');
+                if (box && e.target.type === 'color') { box.classList.remove('unset'); box.querySelector('.tc-clr').textContent = 'Reset'; }
+                if (e.target.matches('[data-f="size"]')) e.target.nextElementSibling.textContent = e.target.value + '%';
             });
             list.addEventListener('change', async e => {
                 if (e.target.matches('[data-file]')) {
@@ -1748,6 +1825,7 @@
                 TOOLS.filter(t => t.custom).forEach(t => { if (frames[t.id]) { frames[t.id].remove(); delete frames[t.id]; } TOOLS.splice(TOOLS.indexOf(t), 1); });
                 layout = DEFAULT_LAYOUT();
                 TOOLS.forEach(applyLook);
+                applyHubLook(); paintHub();
                 commit();
             });
             const close = () => { back.remove(); document.removeEventListener('keydown', onKey); };
@@ -1755,6 +1833,26 @@
             document.addEventListener('keydown', onKey);
             back.addEventListener('mousedown', e => { if (e.target === back) close(); });
             back.querySelector('#tcDone').addEventListener('click', close);
+            // Sidebar & window — hub-wide, applied live as you change them.
+            const hubBox = back.querySelector('#tcHub');
+            const paintHub = () => {
+                const H = layout.hub || {};
+                hubBox.innerHTML = '<div class="tc-h">Sidebar &amp; window</div>' +
+                    '<label class="tc-sw"><input type="checkbox" data-hub="hideNumbers"' + (H.hideNumbers ? ' checked' : '') + '> Hide tab numbers (1–9 shortcuts still work)</label>' +
+                    '<label>All tabs — text &amp; logo color</label>' + colorCtl('tabColor', H.tabColor, 'Default') +
+                    '<label>All tabs — hover / open color</label>' + colorCtl('tabHoverColor', H.tabHoverColor, 'White') +
+                    '<label>Sidebar background</label>' + colorCtl('sidebarBg', H.sidebarBg, 'Theme') +
+                    '<label>Main window background</label>' + colorCtl('mainBg', H.mainBg, 'Theme');
+            };
+            const setHub = (k, v) => { layout.hub = Object.assign({}, layout.hub); if (v) layout.hub[k] = v; else delete layout.hub[k]; saveLayout(); applyHubLook(); renderNav(); };
+            hubBox.addEventListener('change', e => { if (e.target.matches('[data-hub]')) setHub(e.target.dataset.hub, e.target.checked); });
+            hubBox.addEventListener('input', e => {
+                const box = e.target.closest('[data-color]'); if (!box || e.target.type !== 'color') return;
+                box.classList.remove('unset'); box.querySelector('.tc-clr').textContent = 'Reset';
+                setHub(box.dataset.color, e.target.value);
+            });
+            hubBox.addEventListener('click', e => { const b = e.target.closest('[data-clr]'); if (!b || b.closest('.unset')) return; setHub(b.closest('[data-color]').dataset.color, ''); paintHub(); });
+            paintHub();
             paint();
         }
         document.getElementById('custTabsBtn').addEventListener('click', openTabCustomizer);
