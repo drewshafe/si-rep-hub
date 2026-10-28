@@ -65,6 +65,15 @@
   .row .rn { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .row .rm { font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .none { font-size:12.5px; color:var(--muted); padding:4px 0 2px; }
+  .row .pick { flex:0 0 auto; width:16px; height:16px; cursor:pointer; accent-color:var(--accent); }
+  .row .ord { flex:0 0 auto; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#fff; font-size:11px; font-weight:800; display:none; align-items:center; justify-content:center; }
+  .row .ord.on { display:inline-flex; }
+  .optbar { display:none; gap:6px; margin-top:8px; padding-top:10px; border-top:1px dashed var(--line); align-items:center; }
+  .optbar.on { display:flex; }
+  .optbar .hint { font-size:11.5px; color:var(--muted); margin-right:auto; }
+  .unfiled { margin-top:22px; }
+  .unfiled h3 { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:8px; }
+  .unfiled .sec { max-width:760px; }
 
   /* modal */
   .back-dim { position:fixed; inset:0; background:rgba(14,16,40,.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; }
@@ -110,6 +119,8 @@
     <div class="grid" id="grid"></div>
   </div>
 
+  <div id="unfiled" class="unfiled" hidden></div>
+
   <div id="detailView" hidden>
     <button class="back" id="backBtn" type="button">← All folders</button>
     <div class="dhead" id="dhead"></div>
@@ -150,7 +161,8 @@
   function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200); }
   const hub = msg => { try { parent.postMessage(Object.assign({ siHub: 'folders' }, msg), '*'); } catch (e) {} };
 
-  let user = null, folders = [], assets = [], scenarios = [], openId = null;
+  let user = null, folders = [], assets = [], scenarios = [], unfiled = [], openId = null;
+  let picks = [];   // ROI scenario ids ticked for the options link, in pick order (= tab order)
 
   // ── data ──
   async function loadAll() {
@@ -159,7 +171,7 @@
       SIsb.listAssets(),
       SIsb.listConfigs()
     ]);
-    folders = f; assets = a; scenarios = c.filter(x => x.merchant_ref);
+    folders = f; assets = a; scenarios = c.filter(x => x.merchant_ref); unfiled = c.filter(x => !x.merchant_ref);
   }
   const itemsFor = id => ({
     roi: scenarios.filter(x => x.merchant_ref === id),
@@ -187,6 +199,12 @@
         '<div class="fhead">' + logoHtml(f) + '<div style="min-width:0"><div class="fname">' + esc(f.name) + '</div><div class="fsub">' + esc(f.domain || 'Updated ' + ago(new Date(lastTouched(f)).toISOString())) + '</div></div></div>' +
         '<div class="counts">' + (chips || '<span class="cnt none">No saves yet</span>') + '</div></div>';
     }).join('') : '<div class="empty" style="grid-column:1/-1"><b>' + (q ? 'No folders match “' + esc(q) + '”' : 'No merchant folders yet') + '</b>' + (q ? '' : 'Click ＋ New folder to create the first one.') + '</div>';
+    // ROI scenarios saved before folders existed (no merchant_ref) — file them in one click.
+    const uf = unfiled.filter(c => !q || (c.merchant || '').toLowerCase().includes(q) || (c.title || '').toLowerCase().includes(q));
+    $('unfiled').hidden = !uf.length;
+    $('unfiled').innerHTML = uf.length ? '<h3>Unfiled ROI scenarios (' + uf.length + ')</h3><div class="sec">' + uf.map(c =>
+      '<div class="row" data-kind="roi" data-id="' + esc(c.id) + '"><div class="rt"><div class="rn">' + esc(c.merchant || 'No merchant name') + ' — ' + esc(c.title || 'Scenario') + '</div><div class="rm">' + esc(ago(c.updated_at)) + '</div></div>' +
+      '<button class="btn small primary" type="button" data-act="file">Create folder &amp; file</button><button class="btn small" type="button" data-act="view" title="Open the branded proposal">↗</button></div>').join('') + '</div>' : '';
   }
 
   // ── detail view ──
@@ -204,12 +222,17 @@
     $('sections').innerHTML = SECTIONS.map(s => {
       const rows = it[s.kind];
       return '<div class="sec"><h3>' + esc(s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') + '</h3>' +
-        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — save from the ' + esc(s.tool) + ' tab.</div>') + '</div>';
+        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — save from the ' + esc(s.tool) + ' tab.</div>') +
+        (s.kind === 'roi' && rows.length ? '<div class="optbar' + (picks.length ? ' on' : '') + '"><span class="hint">Tick scenarios in the order you want their tabs</span>' +
+          '<button class="btn small primary" type="button" data-act="optcopy">📋 Copy ' + (picks.length > 1 ? 'options link (' + picks.length + ')' : 'link') + '</button>' +
+          '<button class="btn small" type="button" data-act="optopen" title="Open in a new window">↗</button></div>' : '') + '</div>';
     }).join('');
   }
   function rowHtml(s, r) {
     if (s.kind === 'roi') {
-      return '<div class="row" data-kind="roi" data-id="' + esc(r.id) + '"><div class="rt"><div class="rn">' + esc(r.title || r.merchant || 'Scenario') + '</div>' +
+      const pos = picks.indexOf(r.id);
+      return '<div class="row" data-kind="roi" data-id="' + esc(r.id) + '"><input type="checkbox" class="pick" data-act="pick" title="Include in the merchant options link"' + (pos >= 0 ? ' checked' : '') + '>' +
+        '<span class="ord' + (pos >= 0 ? ' on' : '') + '">' + (pos >= 0 ? pos + 1 : '') + '</span><div class="rt"><div class="rn">' + esc(r.title || r.merchant || 'Scenario') + '</div>' +
         '<div class="rm">' + (r.updated_by === 'merchant' ? 'Merchant edited · ' : '') + esc(ago(r.updated_at)) + '</div></div>' +
         '<button class="btn small primary" type="button" data-act="load">Load</button><button class="btn small" type="button" data-act="view" title="Open the branded proposal">↗</button></div>';
     }
@@ -221,7 +244,7 @@
   }
 
   function showList() { openId = null; $('detailView').hidden = true; $('listView').hidden = false; renderList(); }
-  function showFolder(id) { openId = id; $('listView').hidden = true; $('detailView').hidden = false; renderDetail(); scrollTo(0, 0); }
+  function showFolder(id) { openId = id; picks = []; $('listView').hidden = true; $('unfiled').hidden = true; $('detailView').hidden = false; renderDetail(); scrollTo(0, 0); }
 
   function activate(f) {
     SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path });
@@ -250,9 +273,20 @@
       } catch (x) { toast('Couldn’t update: ' + (x.message || x)); }
     }
   });
+  const optLink = () => CALC + 'proposal.html?ids=' + picks.join(',');
   $('sections').addEventListener('click', async e => {
     const b = e.target.closest('[data-act]'); if (!b) return;
+    if (b.dataset.act === 'optcopy' && picks.length) {
+      try { await navigator.clipboard.writeText(optLink()); toast(picks.length > 1 ? 'Options link copied (' + picks.length + ' scenarios)' : 'Link copied'); } catch (x) { prompt('Copy this link:', optLink()); }
+      return;
+    }
+    if (b.dataset.act === 'optopen' && picks.length) { window.open(optLink(), '_blank', 'noopener'); return; }
     const row = b.closest('.row'), kind = row.dataset.kind, id = row.dataset.id;
+    if (b.dataset.act === 'pick') {
+      const i = picks.indexOf(id);
+      if (b.checked && i < 0) picks.push(id); else if (!b.checked && i >= 0) picks.splice(i, 1);
+      renderDetail(); return;
+    }
     const f = folders.find(x => x.id === openId);
     if (b.dataset.act === 'view') { window.open(CALC + 'proposal.html?id=' + encodeURIComponent(id), '_blank', 'noopener'); return; }
     if (b.dataset.act === 'load') {
@@ -274,6 +308,22 @@
         assets = assets.filter(x => x.id !== id);
         renderDetail(); toast('Deleted');
       } catch (x) { toast('Couldn’t delete: ' + (x.message || x)); }
+    }
+  });
+
+  $('unfiled').addEventListener('click', async e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const id = b.closest('.row').dataset.id, c = unfiled.find(x => x.id === id); if (!c) return;
+    if (b.dataset.act === 'view') { window.open(CALC + 'proposal.html?id=' + encodeURIComponent(id), '_blank', 'noopener'); return; }
+    if (b.dataset.act === 'file') {
+      const name = (prompt('File this scenario into the folder named:', c.merchant || '') || '').trim();
+      if (!name) return;
+      b.disabled = true;
+      try {
+        const f = await SIsb.createFolder({ name: name });
+        await SIsb.linkScenario(id, f.id);
+        await loadAll(); renderList(); toast('Filed into ' + f.name);
+      } catch (x) { b.disabled = false; toast('Couldn’t file it: ' + (x.message || x)); }
     }
   });
 

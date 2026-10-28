@@ -433,15 +433,6 @@
         .ri-saved-del:disabled { background: #d6bcc0; cursor: default; opacity: 0.7; }
         .ri-saved-cb { flex-shrink: 0; cursor: pointer; margin: 0; }
 
-        /* Cloud Folders — pick & order scenarios into a merchant options link */
-        .ri-opt-cb { flex-shrink: 0; cursor: pointer; margin: 0; }
-        .ri-opt-ord { flex-shrink: 0; width: 15px; height: 15px; border-radius: 50%; font-size: 0.82em;
-            font-weight: 800; color: #fff; background: #6675FF; display: none; align-items: center;
-            justify-content: center; line-height: 1; }
-        .ri-opt-ord.on { display: inline-flex; }
-        .ri-opt-bar { display: none; gap: 6px; padding: 5px 8px 9px; }
-        .ri-opt-bar .ri-btn { font-size: 0.64em; }
-        body.pm .ri-opt-ord { background: #d4af37; color: #1a1205; }
 
         /* Paste-a-link loader */
         .ri-loadlink { display: flex; gap: 5px; margin-bottom: 2px; }
@@ -846,10 +837,8 @@
                     </div>
                     <div class="ri-saved-list" id="ri-saved-list"></div>
                     <div class="ri-btn-row" style="margin-top:5px;">
-                        <button class="ri-btn" id="ri-cloud-folders" style="flex:1;">☁ Cloud Folders</button>
+                        <button class="ri-btn" id="ri-merchant-folders" style="flex:1;" title="Cloud scenarios + every tool's saves now live in Merchant Folders">📁 Merchant Folders</button>
                     </div>
-                    <input class="ri-field" id="ri-cloud-search" placeholder="🔎 Search merchant or scenario…" style="display:none;margin-top:5px;font-size:0.72em;">
-                    <div class="ri-saved-list" id="ri-cloud-list"></div>
                 </div>
                 <!-- Calc Type (Core vs Competitor) — its own row above the sub-tabs. -->
                 <div class="ri-disp-row ri-calctype-row" style="margin-bottom:6px;">
@@ -1015,47 +1004,8 @@
                 list.classList.toggle('show', open);
                 if (open) renderSavedList(repState.savedConfigs || []);
             });
-            // ☁ Cloud Folders — the rep's cloud-saved calculators (Supabase). Select one
-            // to load it into the Master Calculator here, or open the branded proposal.
-            p.querySelector('#ri-cloud-folders').addEventListener('click', async () => {
-                const list = p.querySelector('#ri-cloud-list');
-                const open = !list.classList.contains('show');
-                list.classList.toggle('show', open);
-                const cs = p.querySelector('#ri-cloud-search');
-                if (!open) { if (cs) { cs.style.display = 'none'; cs.value = ''; } return; }
-                if (!window.SIsb) { list.innerHTML = '<div class="ri-saved-empty">Cloud module unavailable.</div>'; return; }
-                list.innerHTML = '<div class="ri-saved-empty">Loading…</div>';
-                try {
-                    const u = await SIsb.currentUser();
-                    if (!u) {
-                        const email = prompt('Sign in to view your cloud folders.\nEnter your ShipInsure email — we\'ll send a magic link:');
-                        if (!email) { list.innerHTML = '<div class="ri-saved-empty">Sign in to view your folders.</div>'; return; }
-                        const { error } = await SIsb.signInMagic(email.trim());
-                        list.innerHTML = '<div class="ri-saved-empty">' + (error ? ('Error: ' + error.message) : ('Magic link sent to ' + email.trim() + '. Open it (same browser), then click ☁ Cloud Folders again.')) + '</div>';
-                        return;
-                    }
-                    renderCloudFolders(await SIsb.listConfigs());
-                } catch (e) { list.innerHTML = '<div class="ri-saved-empty">' + (e && e.message || e) + '</div>'; }
-            });
-            // Filter the cloud folders by merchant or scenario name (a merchant-name match
-            // reveals all of that merchant's scenarios; empty query shows everything).
-            p.querySelector('#ri-cloud-search').addEventListener('input', (e) => {
-                const q = (e.target.value || '').trim().toLowerCase();
-                const list = p.querySelector('#ri-cloud-list');
-                list.querySelectorAll('.ri-cloud-group').forEach(g => {
-                    const header = g.querySelector('.ri-saved-actions');
-                    const mname = header ? header.textContent.toLowerCase() : '';
-                    const merchantHit = !!q && mname.indexOf(q) !== -1;
-                    let any = false;
-                    g.querySelectorAll('.ri-saved-item').forEach(it => {
-                        const name = ((it.querySelector('.ri-saved-name') || {}).textContent || '').toLowerCase();
-                        const match = !q || merchantHit || name.indexOf(q) !== -1;
-                        it.style.display = match ? '' : 'none';
-                        if (match) any = true;
-                    });
-                    g.style.display = any ? '' : 'none';
-                });
-            });
+            // Cloud scenarios (and every other tool's saves) live in the Merchant Folders tab.
+            p.querySelector('#ri-merchant-folders').addEventListener('click', () => activate('folders'));
             // Show/hide the Hybrid Coverage controls based on the chosen template + mode.
             const syncHybridRows = () => {
                 const isHyb = (p.querySelector('#ri-pricing').value === 'hybrid_coverage');
@@ -1183,100 +1133,6 @@
         // ☁ Cloud Folders list — the rep's Supabase configs, grouped by merchant.
         // Click a row to load it into the Master Calculator here; ↗ opens the branded
         // merchant proposal in a new window.
-        function renderCloudFolders(rows) {
-            const list = document.getElementById('ri-cloud-list');
-            if (!list) return;
-            const _search = document.getElementById('ri-cloud-search');
-            if (_search) { _search.style.display = (rows && rows.length) ? '' : 'none'; _search.value = ''; }
-            if (!rows || !rows.length) { list.innerHTML = '<div class="ri-saved-empty">No cloud calculators yet — use ☁ Cloud Save in the calculator.</div>'; return; }
-            const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-            const groups = {};
-            rows.forEach(r => { const m = r.merchant || '—'; (groups[m] = groups[m] || []).push(r); });
-            const CALC = 'https://drewshafe.github.io/si-roi-calculator/';
-            const selections = {}; // gkey -> [config ids] in pick order (= merchant tab order)
-            let html = '';
-            Object.keys(groups).sort().forEach((m, gi) => {
-                const gkey = 'g' + gi;
-                html += '<div class="ri-cloud-group" data-gkey="' + gkey + '">';
-                html += '<div class="ri-saved-actions" style="font-weight:800;text-transform:uppercase;letter-spacing:.05em;font-size:0.6em;">' + esc(m) + '</div>';
-                groups[m].forEach(r => {
-                    const date = r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-                    const edited = r.updated_by === 'merchant' ? ' ✎' : '';
-                    html += '<div class="ri-saved-item" data-id="' + esc(r.id) + '" data-gkey="' + gkey + '">'
-                        + '<input type="checkbox" class="ri-opt-cb" data-id="' + esc(r.id) + '" data-gkey="' + gkey + '" title="Include this scenario in the merchant options link" onclick="event.stopPropagation()">'
-                        + '<span class="ri-opt-ord" data-id="' + esc(r.id) + '"></span>'
-                        + '<span class="ri-saved-name">' + esc(r.title || r.merchant || r.id) + '</span>'
-                        + '<span class="ri-saved-date">' + esc(date + edited) + '</span>'
-                        + '<button class="ri-cloud-open" title="Open this scenario\'s proposal in a new window" style="flex-shrink:0;font-size:0.9em;background:none;border:none;cursor:pointer;color:#4a5fc1;padding:0 2px;">↗</button></div>';
-                });
-                // Per-merchant options link — appears once ≥1 scenario is ticked.
-                html += '<div class="ri-opt-bar" data-gkey="' + gkey + '">'
-                    + '<button class="ri-btn ri-opt-copy" data-gkey="' + gkey + '" style="flex:1;">📋 Copy options link</button>'
-                    + '<button class="ri-btn ri-opt-open" data-gkey="' + gkey + '" title="Open the options link in a new window" style="flex:0 0 auto;">↗</button></div>';
-                html += '</div>';
-            });
-            list.innerHTML = html;
-
-            const selFor = gkey => (selections[gkey] || (selections[gkey] = []));
-            const optLink = gkey => CALC + 'proposal.html?ids=' + selFor(gkey).join(',');
-            function refreshGroup(gkey) {
-                const ids = selFor(gkey);
-                list.querySelectorAll('.ri-opt-cb[data-gkey="' + gkey + '"]').forEach(cb => {
-                    const pos = ids.indexOf(cb.dataset.id);
-                    const ord = cb.closest('.ri-saved-item').querySelector('.ri-opt-ord');
-                    if (ord) { ord.textContent = pos >= 0 ? (pos + 1) : ''; ord.classList.toggle('on', pos >= 0); }
-                });
-                const bar = list.querySelector('.ri-opt-bar[data-gkey="' + gkey + '"]');
-                if (bar) bar.style.display = ids.length ? 'flex' : 'none';
-                const copyBtn = list.querySelector('.ri-opt-copy[data-gkey="' + gkey + '"]');
-                if (copyBtn) copyBtn.textContent = ids.length > 1 ? ('📋 Copy options link (' + ids.length + ')') : '📋 Copy link (1)';
-            }
-            list.querySelectorAll('.ri-opt-cb').forEach(cb => {
-                cb.addEventListener('change', (e) => {
-                    e.stopPropagation();
-                    const gkey = cb.dataset.gkey, id = cb.dataset.id, ids = selFor(gkey);
-                    const i = ids.indexOf(id);
-                    if (cb.checked && i < 0) ids.push(id);
-                    else if (!cb.checked && i >= 0) ids.splice(i, 1);
-                    refreshGroup(gkey);
-                });
-            });
-            list.querySelectorAll('.ri-opt-copy').forEach(btn => btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const gkey = btn.dataset.gkey; if (!selFor(gkey).length) return;
-                try { navigator.clipboard && navigator.clipboard.writeText(optLink(gkey)); } catch (err) {}
-                btn.textContent = '✓ Copied'; setTimeout(() => refreshGroup(gkey), 1400);
-            }));
-            list.querySelectorAll('.ri-opt-open').forEach(btn => btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const gkey = btn.dataset.gkey; if (!selFor(gkey).length) return;
-                window.open(optLink(gkey), '_blank', 'noopener');
-            }));
-
-            list.querySelectorAll('.ri-saved-item').forEach(item => {
-                const id = item.dataset.id;
-                // Row click → load the BRANDED, EDITABLE calc into the Master Calculator
-                // (the calc now applies the merchant folder's branding via applyCalcBranding,
-                // so plan options / pricing stay editable while showing the saved brand).
-                item.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('ri-cloud-open')) return;
-                    if (e.target.classList.contains('ri-opt-cb')) return; // ticking a scenario ≠ loading it
-                    _hubCloudId = id;   // so the Custom toggle stacks THIS config's editor
-                    _hubPastedLink = null; // cloud config wins over any earlier pasted link
-                    activate('roi');
-                    if (frames['roi']) frames['roi'].src = CALC + 'index.html?id=' + id;
-                    list.classList.remove('show');
-                });
-                // ↗ → same branded proposal in a new window (full screen / to share).
-                item.querySelector('.ri-cloud-open').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    _hubCloudId = id;
-                    _hubPastedLink = null; // cloud config wins over any earlier pasted link
-                    window.open(CALC + 'proposal.html?id=' + id, '_blank', 'noopener');
-                });
-            });
-        }
-
         let _hubCloudId = null; // the cloud config last loaded from ☁ Cloud Folders (so the Custom tab can open it branded)
         let _hubPastedLink = null; // a link pasted into the loader with no ?id= (so the Custom tab can seed its styler via ?base=)
         // Open Custom Build, loading a specific cloud config (branded) when one is set.
