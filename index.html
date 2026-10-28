@@ -185,6 +185,13 @@
         .tc-size { display:flex; align-items:center; gap:8px; }
         .tc-size input[type=range] { flex:1; accent-color:#4a5fc1; padding:0; border:0; }
         .tc-size output { font-size:12px; font-weight:700; color:#4a4f6e; min-width:38px; }
+        .tc-roi { display:block; }
+        .tc-roi .tc-roi-sub { font-size:12px; color:#6b7090; margin-bottom:8px; }
+        .tc-roi-g { margin-bottom:10px; display:flex; flex-direction:column; gap:4px; }
+        .tc-roi-h { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#4a5fc1; margin:2px 0 2px; }
+        .tc-roi-row { padding:4px 8px; background:#fff; }
+        .tc-roi-row button { width:24px; height:24px; }
+        .tc-roi .tc-edit-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:4px; }
         .tc-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
         .tc-actions button { font:inherit; font-weight:700; border-radius:8px; padding:9px 16px; cursor:pointer; border:1px solid #d8dbe8; background:#fff; color:#4a4f6e; }
         .tc-actions .tc-primary { background:#4a5fc1; border-color:#4a5fc1; color:#fff; }
@@ -547,6 +554,7 @@
            has-c = idle color, has-hc = hover/open color. Logos are recolored with a mask
            of the logo filled with currentColor, layered over the (hidden) logo image. */
         body.hide-keyhints .nav-item .key-hint { display:none; }
+        .rep-inputs .ri-hidden { display:none !important; }
         .nav-logo-wrap { position:relative; display:inline-flex; flex-shrink:0; }
         .nav-logo-tint { position:absolute; inset:0; display:none; background:currentColor; -webkit-mask:var(--logo) center/contain no-repeat; mask:var(--logo) center/contain no-repeat; }
         body .nav .nav-item.has-c:not(:hover):not(.active):not(.expanded) { color:var(--tab-c); }
@@ -1155,7 +1163,70 @@
                 });
             });
             setTimeout(syncDisplayUI, 0);
+            applyRoiLayout(p);
             return p;
+        }
+
+        // ── ROI Builder REP Inputs layout (⚙ Customize tabs → ROI Builder → ⚙ Inputs) ──
+        // layout.roi = { <group>: [ids in order], off: [hidden ids] }. Hidden inputs keep
+        // their values — they're just out of the way. Groups + labels for the editor:
+        const ROI_GROUPS = [
+            { key: 'blocks',   title: 'Panel order',          order: true, items: [['loadlink', 'Paste a calculator link'], ['save', 'Save / Load Options'], ['calctype', 'Calc Type'], ['tabs', 'Sub-tabs + their settings']] },
+            { key: 'tabs',     title: 'Sub-tabs',             order: true, items: [['coverage', 'Coverage'], ['display', 'Display'], ['custom', 'Custom'], ['proposal', 'Proposal']] },
+            { key: 'sections', title: 'Coverage sections',    order: true, items: [['plan', 'Plan Options'], ['pricing', 'Pricing'], ['upfront', 'Upfront Rev Share'], ['sinet', 'SI Net MRR']] },
+            { key: 'toggles',  title: 'Plan Options',         order: true, items: [['hideCurrentCost', 'Hide Current Cost'], ['returns', 'Enable Returns'], ['grossRevShare', 'Enable Gross Share'], ['cashback', 'Enable Cashback'], ['covmode', 'Coverage Mode (with Returns)', 'fixed']] },
+            { key: 'pricing',  title: 'Pricing fields',       order: false, items: [['template', 'Template'], ['minp', 'Min $'], ['limit', 'Limit $'], ['currency', 'Currency'], ['claimres', 'Claim Resolution']] },
+            { key: 'disp',     title: 'Display settings',     order: true, items: [['density', 'Density'], ['layout', 'Layout'], ['text', 'Text'], ['zoom', 'Size']] },
+        ];
+        const roiCfg = () => layout.roi || {};
+        // Rep's order first (unknown ids dropped, new ones appended); 'fixed' items always stay last.
+        const roiOrder = g => {
+            const movable = g.items.filter(i => !i[2]).map(i => i[0]), fixed = g.items.filter(i => i[2]).map(i => i[0]);
+            const want = (roiCfg()[g.key] || []).filter(id => movable.includes(id));
+            return want.concat(movable.filter(id => !want.includes(id)), fixed);
+        };
+        const roiOff = id => (roiCfg().off || []).includes(id);
+        function applyRoiLayout(p) {
+            if (!p) return;
+            const secByTitle = t => Array.from(p.querySelectorAll('.ri-sec')).find(sc => (sc.querySelector('.ri-sec-h') || {}).textContent.replace(/[▸▾]/g, '').trim() === t);
+            const hide = (el, id) => { if (el) el.classList.toggle('ri-hidden', roiOff(id)); };
+            const G = k => ROI_GROUPS.find(g => g.key === k);
+            // Panel blocks — move each block (the sub-tab block = sub-nav + its panes) to the top in order.
+            const blocks = {
+                loadlink: [p.querySelector('.ri-loadlink')],
+                save: [(p.querySelector('#ri-merchant') || p).closest('.ri-sec')],
+                calctype: [p.querySelector('.ri-calctype-row')],
+                tabs: [p.querySelector('.ri-subnav')].concat(Array.from(p.querySelectorAll(':scope > .ri-pane'))),
+            };
+            roiOrder(G('blocks')).slice().reverse().forEach(id => (blocks[id] || []).slice().reverse().forEach(el => { if (el) p.prepend(el); }));
+            Object.keys(blocks).forEach(id => (blocks[id] || []).forEach(el => hide(el, id)));
+            // Sub-tabs — order + show; if the open pane's tab gets hidden, open the first shown one.
+            const nav = p.querySelector('.ri-subnav');
+            roiOrder(G('tabs')).forEach(id => { const b = nav.querySelector('[data-pane="' + id + '"]'); if (b) { nav.appendChild(b); hide(b, id); } });
+            const act = nav.querySelector('.ri-subtab.active');
+            if (act && act.classList.contains('ri-hidden')) {
+                const first = Array.from(nav.querySelectorAll('.ri-subtab:not(.ri-hidden)')).find(b => b.dataset.pane === 'coverage' || b.dataset.pane === 'display');
+                if (first) first.click();
+            }
+            // Coverage sections.
+            const cov = p.querySelector('.ri-pane[data-pane="coverage"]');
+            const secs = { plan: secByTitle('Plan Options'), pricing: secByTitle('Pricing'), upfront: secByTitle('Upfront Rev Share'), sinet: cov.querySelector('.ri-sinet') };
+            roiOrder(G('sections')).forEach(id => { if (secs[id]) { cov.appendChild(secs[id]); hide(secs[id], id); } });
+            // Plan Options toggles — shown ones fill the two columns in order (left column first).
+            const cols = cov.querySelectorAll('.ri-grid > .ri-col');
+            if (cols.length === 2) {
+                const ids = roiOrder(G('toggles')).filter(id => id !== 'covmode');
+                const shown = ids.filter(id => !roiOff(id)), half = Math.ceil(shown.length / 2);
+                ids.forEach(id => { const b = cov.querySelector('[data-feat="' + id + '"]'); if (!b) return; const i = shown.indexOf(id); (i >= 0 && i < half ? cols[0] : cols[1]).appendChild(b); hide(b, id); });
+            }
+            hide(p.querySelector('#ri-coverage'), 'covmode');
+            // Pricing fields — show / hide only.
+            const fieldBox = id => { const el = p.querySelector('#ri-' + id); return el && el.closest('.ri-sel-row > div'); };
+            hide(p.querySelector('#ri-pricing-wrap'), 'template'); hide(p.querySelector('#ri-minp-wrap'), 'minp'); hide(p.querySelector('#ri-limit-wrap'), 'limit');
+            hide(fieldBox('currency'), 'currency'); hide(fieldBox('claimres'), 'claimres');
+            // Display settings rows.
+            const disp = p.querySelector('.ri-disp');
+            if (disp) roiOrder(G('disp')).forEach(id => { const r = disp.querySelector('[data-disp="' + id + '"]'); const row = r && r.closest('.ri-disp-row'); if (row) { disp.appendChild(row); hide(row, id); } });
         }
 
         function renderSavedList(configs) {
@@ -1666,16 +1737,32 @@
                 '<div class="tc-actions"><button type="button" class="tc-reset" id="tcReset">Reset to default</button><button type="button" class="tc-primary" id="tcDone">Done</button></div></div>';
             document.body.appendChild(back);
             const list = back.querySelector('#tcList');
-            let editing = null, pendingLogo;   // pendingLogo: undefined = unchanged, null = back to original, dataURL = upload
+            let editing = null, pendingLogo, roiEditing = false;
+            const roiEditorHtml = () => '<div class="tc-edit tc-roi" data-roi>' +
+                '<div class="tc-roi-sub">Reorder or hide parts of the ROI Builder’s REP Inputs sidebar. Hidden inputs keep their current values.</div>' +
+                ROI_GROUPS.map(g => {
+                    const ids = roiOrder(g), nMov = g.items.filter(x => !x[2]).length;
+                    return '<div class="tc-roi-g"><div class="tc-roi-h">' + esc(g.title) + '</div>' + ids.map((id, i) => {
+                        const it = g.items.find(x => x[0] === id) || [id, id], label = it[1];
+                        if (it[2]) return '<div class="tc-row tc-roi-row' + (roiOff(id) ? ' is-off' : '') + '" data-g="' + g.key + '" data-rid="' + id + '"><span class="tc-name">' + esc(label) + '</span><label class="tc-sw"><input type="checkbox" data-rshow' + (roiOff(id) ? '' : ' checked') + '> Show</label></div>';
+                        return '<div class="tc-row tc-roi-row' + (roiOff(id) ? ' is-off' : '') + '" data-g="' + g.key + '" data-rid="' + id + '">' +
+                            (g.order ? '<button type="button" data-rmv="-1" title="Move up"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-rmv="1" title="Move down"' + (i >= nMov - 1 ? ' disabled' : '') + '>↓</button>' : '') +
+                            '<span class="tc-name">' + esc(label) + '</span>' +
+                            (g.key === 'blocks' && id === 'tabs' ? '' : '<label class="tc-sw"><input type="checkbox" data-rshow' + (roiOff(id) ? '' : ' checked') + '> Show</label>') + '</div>';
+                    }).join('') + '</div>';
+                }).join('') +
+                '<div class="tc-edit-actions"><button type="button" class="tc-mini tc-reset1" data-rreset>Reset REP Inputs</button><button type="button" class="tc-mini tc-save" data-rdone>Done</button></div></div>';
+            const roiCommit = () => { saveLayout(); applyRoiLayout(repInputsEl); paint(); };   // pendingLogo: undefined = unchanged, null = back to original, dataURL = upload
             const esc = v => String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
             const rowHtml = (t, i, n, kid) => '<div class="tc-row' + (isOff(t.id) ? ' is-off' : '') + (kid ? ' is-kid' : '') + '" data-id="' + t.id + '"' + (kid ? ' data-group="' + t.parent + '"' : '') + '>' +
                 '<button type="button" data-mv="-1" title="Move up"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-mv="1" title="Move down"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
                 '<span class="tc-name">' + esc((t.emoji || '') + ' ' + t.name) + '</span>' + (t.custom ? '<span class="tc-tag">Custom</span>' +
                     '<select data-ext title="Where this tab opens"><option value="">In the hub</option><option value="1"' + (t.ext ? ' selected' : '') + '>New browser tab</option></select>' : '') +
                 '<label class="tc-sw"><input type="checkbox" data-show' + (isOff(t.id) ? '' : ' checked') + '> Show</label>' +
-                '<button type="button" class="tc-edit-btn" data-edit title="Change name, icon or logo">✎ Edit</button>' +
+                '<button type="button" class="tc-edit-btn" data-edit title="Change name, icon, logo, colors or size">✎ Edit</button>' +
+                (t.id === 'roi' ? '<button type="button" class="tc-edit-btn" data-roiedit title="Reorder or hide the ROI Builder’s REP Inputs">⚙ Inputs</button>' : '') +
                 (t.custom ? '<button type="button" class="tc-del" data-del title="Delete this tab">✕</button>' : '') + '</div>' +
-                (editing === t.id ? editHtml(t, kid) : '');
+                (editing === t.id ? editHtml(t, kid) : '') + (t.id === 'roi' && roiEditing ? roiEditorHtml() : '');
             // Color picker that can be "unset" (falls back to the default shown on its button).
             const colorCtl = (f, v, dflt) => '<span class="tc-color' + (v ? '' : ' unset') + '" data-color="' + f + '"><input type="color" data-f="' + f + '" value="' + esc(v || '#ffffff') + '">' +
                 '<button type="button" class="tc-clr" data-clr title="Back to default">' + (v ? 'Reset' : dflt) + '</button></span>';
@@ -1718,6 +1805,19 @@
                 fr.readAsDataURL(file);
             });
             list.addEventListener('click', async e => {
+                const roiBox = e.target.closest('[data-roi]');
+                if (roiBox) {
+                    if (e.target.closest('[data-rdone]')) { roiEditing = false; return paint(); }
+                    if (e.target.closest('[data-rreset]')) { delete layout.roi; return roiCommit(); }
+                    const mv = e.target.closest('[data-rmv]'); if (!mv) return;
+                    const r = mv.closest('[data-rid]'), g = ROI_GROUPS.find(x => x.key === r.dataset.g);
+                    const arr = roiOrder(g).filter(id => !(g.items.find(x => x[0] === id) || [])[2]), i = arr.indexOf(r.dataset.rid), j = i + Number(mv.dataset.rmv);
+                    if (j < 0 || j >= arr.length) return;
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                    layout.roi = Object.assign({}, layout.roi, { [g.key]: arr });
+                    return roiCommit();
+                }
+                if (e.target.closest('[data-roiedit]')) { roiEditing = !roiEditing; editing = null; return paint(); }
                 const ed = e.target.closest('.tc-edit');
                 if (ed) {
                     const id = ed.dataset.for, t = TOOLS.find(x => x.id === id), o = ORIG[id] || {};
@@ -1782,6 +1882,13 @@
                 if (e.target.matches('[data-f="size"]')) e.target.nextElementSibling.textContent = e.target.value + '%';
             });
             list.addEventListener('change', async e => {
+                if (e.target.matches('[data-rshow]')) {
+                    const id = e.target.closest('[data-rid]').dataset.rid;
+                    const off = ((layout.roi || {}).off || []).filter(x => x !== id);
+                    if (!e.target.checked) off.push(id);
+                    layout.roi = Object.assign({}, layout.roi, { off: off });
+                    return roiCommit();
+                }
                 if (e.target.matches('[data-file]')) {
                     const f = e.target.files[0]; if (!f) return;
                     try {
@@ -1825,7 +1932,7 @@
                 TOOLS.filter(t => t.custom).forEach(t => { if (frames[t.id]) { frames[t.id].remove(); delete frames[t.id]; } TOOLS.splice(TOOLS.indexOf(t), 1); });
                 layout = DEFAULT_LAYOUT();
                 TOOLS.forEach(applyLook);
-                applyHubLook(); paintHub();
+                applyHubLook(); paintHub(); applyRoiLayout(repInputsEl);
                 commit();
             });
             const close = () => { back.remove(); document.removeEventListener('keydown', onKey); };
