@@ -118,6 +118,7 @@
         }
 
         .nav-item .emoji { font-size: 1.15em; flex-shrink: 0; }
+        .nav-item .emoji .nav-icon { width: 1.3em; height: 1.3em; object-fit: contain; display: block; border-radius: 4px; }
 
         .nav-item .key-hint {
             margin-left: auto;
@@ -173,6 +174,16 @@
         .tc-add .tc-full { grid-column:1/-1; }
         .tc-add .tc-note { grid-column:1/-1; font-size:11.5px; color:#6b7090; }
         .tc-err { grid-column:1/-1; color:#c0392b; font-size:12px; }
+        .tc-add { grid-template-columns:96px 1fr; }
+        .tc-iconpick { display:flex; gap:4px; min-width:0; }
+        .tc-iconpick input { width:100%; min-width:0; }
+        .tc-iconpick button { flex:0 0 34px; font:inherit; border:1px dashed #4a5fc1; background:#f5f6ff; color:#4a5fc1; border-radius:8px; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; }
+        .tc-iconpick button img { width:22px; height:22px; object-fit:contain; }
+        .tc-icon-box { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .tc-icon-box input[data-f="emoji"] { width:70px; }
+        .tc-or { font-size:12px; color:#6b7090; }
+        .tc-ico-prev { width:30px; height:30px; object-fit:contain; border-radius:6px; background:linear-gradient(135deg,#4a5fc1,#6b7fd7); padding:3px; }
+        .tc-row .tc-name .tc-ico { width:18px; height:18px; object-fit:contain; vertical-align:-4px; border-radius:3px; }
         .tc-hub { margin-top:16px; border-top:1px solid #eceef6; padding-top:14px; display:grid; grid-template-columns:1fr auto; gap:8px 12px; align-items:center; }
         .tc-hub .tc-h { grid-column:1/-1; font-weight:700; font-size:13px; }
         .tc-hub > label:not(.tc-sw) { font-size:12.5px; color:#4a4f6e; }
@@ -741,6 +752,7 @@
             else if (L.logo) { t.logo = L.logo; t.logoLight = L.logo; }
             else { t.logo = o.logo; t.logoLight = o.logoLight; }
             t.customLook = !!(L.logo || L.mode === 'text');
+            t.icon = L.icon || null;   // uploaded icon image — replaces the emoji in text mode
         }
         TOOLS.forEach(applyLook);
         const isOff = id => (layout.off || []).includes(id);
@@ -815,7 +827,12 @@
                     const im = btn.querySelector('.nav-logo'); im.src = tool.logoLight || tool.logo; im.alt = tool.name;
                     btn.querySelector('.nav-logo-tint').style.setProperty('--logo', 'url("' + (tool.logoLight || tool.logo) + '")');
                 }
-                else { btn.querySelector('.emoji').textContent = tool.emoji; btn.querySelector('.nav-name').textContent = tool.name; }
+                else {
+                    const em = btn.querySelector('.emoji');
+                    if (tool.icon) { const ic = document.createElement('img'); ic.className = 'nav-icon'; ic.src = tool.icon; ic.alt = ''; em.appendChild(ic); }
+                    else em.textContent = tool.emoji;
+                    btn.querySelector('.nav-name').textContent = tool.name;
+                }
                 styleTab(btn, tool);
                 if (tool.ext) {
                     btn.title = tool.name + ' — opens in a new browser tab';
@@ -1727,7 +1744,7 @@
                 '<div class="tc-list" id="tcList"></div>' +
                 '<div class="tc-hub" id="tcHub"></div>' +
                 '<div class="tc-add"><div class="tc-h">Add a tab</div>' +
-                '<input id="tcEmoji" maxlength="4" placeholder="🔗" aria-label="Icon"><input id="tcName" placeholder="Tab name (e.g. Pricing sheet)" aria-label="Tab name">' +
+                '<div class="tc-iconpick"><input id="tcEmoji" maxlength="4" placeholder="🔗" aria-label="Icon"><button type="button" id="tcIconBtn" title="Upload an icon image instead of an emoji">⬆</button><input type="file" accept="image/*" id="tcIconFile" hidden></div><input id="tcName" placeholder="Tab name (e.g. Pricing sheet)" aria-label="Tab name">' +
                 '<input id="tcUrl" class="tc-full" placeholder="Link (https://…)" aria-label="Link">' +
                 '<select id="tcWhere" class="tc-full" aria-label="Where"><option value="">In the sidebar</option><option value="preview">Inside Preview Designer</option></select>' +
                 '<select id="tcExt" class="tc-full" aria-label="Opens"><option value="">Opens inside the hub</option><option value="1">Opens in a new browser tab — for sites with Google / SSO sign-in</option></select>' +
@@ -1737,7 +1754,7 @@
                 '<div class="tc-actions"><button type="button" class="tc-reset" id="tcReset">Reset to default</button><button type="button" class="tc-primary" id="tcDone">Done</button></div></div>';
             document.body.appendChild(back);
             const list = back.querySelector('#tcList');
-            let editing = null, pendingLogo, roiEditing = false;
+            let editing = null, pendingLogo, pendingIcon, roiEditing = false, addIcon = null;   // pendingIcon: undefined = unchanged, null = back to emoji, dataURL = upload
             const roiEditorHtml = () => '<div class="tc-edit tc-roi" data-roi>' +
                 '<div class="tc-roi-sub">Reorder or hide parts of the ROI Builder’s REP Inputs sidebar. Hidden inputs keep their current values.</div>' +
                 ROI_GROUPS.map(g => {
@@ -1756,7 +1773,7 @@
             const esc = v => String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
             const rowHtml = (t, i, n, kid) => '<div class="tc-row' + (isOff(t.id) ? ' is-off' : '') + (kid ? ' is-kid' : '') + '" data-id="' + t.id + '"' + (kid ? ' data-group="' + t.parent + '"' : '') + '>' +
                 '<button type="button" data-mv="-1" title="Move up"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-mv="1" title="Move down"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
-                '<span class="tc-name">' + esc((t.emoji || '') + ' ' + t.name) + '</span>' + (t.custom ? '<span class="tc-tag">Custom</span>' +
+                '<span class="tc-name">' + (t.icon ? '<img class="tc-ico" src="' + esc(t.icon) + '" alt="">' : esc(t.emoji || '')) + ' ' + esc(t.name) + '</span>' + (t.custom ? '<span class="tc-tag">Custom</span>' +
                     '<select data-ext title="Where this tab opens"><option value="">In the hub</option><option value="1"' + (t.ext ? ' selected' : '') + '>New browser tab</option></select>' : '') +
                 '<label class="tc-sw"><input type="checkbox" data-show' + (isOff(t.id) ? '' : ' checked') + '> Show</label>' +
                 '<button type="button" class="tc-edit-btn" data-edit title="Change name, icon, logo, colors or size">✎ Edit</button>' +
@@ -1772,7 +1789,10 @@
                 const logo = L.logo || o.logo;
                 return '<div class="tc-edit' + (kid ? ' is-kid' : '') + '" data-for="' + t.id + '">' +
                     '<label>Name</label><input data-f="name" value="' + esc(t.name) + '">' +
-                    '<label>Icon</label><input data-f="emoji" maxlength="4" value="' + esc(t.emoji || '') + '" placeholder="emoji">' +
+                    '<label>Icon</label><div class="tc-icon-box"><input data-f="emoji" maxlength="4" value="' + esc(t.emoji || '') + '" placeholder="emoji"><span class="tc-or">or</span>' +
+                        ((L.icon && pendingIcon !== null) || pendingIcon ? '<img class="tc-ico-prev" data-iprev src="' + esc(pendingIcon || L.icon) + '" alt="">' : '') +
+                        '<button type="button" class="tc-mini" data-iup>Upload icon</button>' + ((L.icon && pendingIcon !== null) || pendingIcon ? '<button type="button" class="tc-mini" data-iclr>Use emoji</button>' : '') +
+                        '<input type="file" accept="image/*" data-ifile hidden></div>' +
                     (t.custom ? '<label>Link</label><input data-f="url" value="' + esc(t.url) + '">' : '') +
                     '<label>Show as</label><select data-f="mode"><option value="logo"' + (L.mode !== 'text' && logo ? ' selected' : '') + (logo ? '' : ' disabled') + '>Logo</option><option value="text"' + (L.mode === 'text' || !logo ? ' selected' : '') + '>Text (icon + name)</option></select>' +
                     '<label>Logo</label><div class="tc-logo-box">' + (logo ? '<img class="tc-logo-prev" data-prev src="' + esc(logo) + '" alt="">' : '<span style="font-size:12px;color:#6b7090" data-prev>No logo yet</span>') +
@@ -1804,6 +1824,25 @@
                 }; im.src = fr.result; };
                 fr.readAsDataURL(file);
             });
+            // Icon preview + "Use emoji" button, updated in place (keeps unsaved edits in the panel).
+            const setIconPrev = (ed, src) => {
+                const box = ed.querySelector('.tc-icon-box');
+                box.querySelectorAll('[data-iprev],[data-iclr]').forEach(n => n.remove());
+                if (!src) return;
+                box.querySelector('[data-iup]').insertAdjacentHTML('beforebegin', '<img class="tc-ico-prev" data-iprev src="' + src + '" alt="">');
+                box.querySelector('[data-iup]').insertAdjacentHTML('afterend', '<button type="button" class="tc-mini" data-iclr>Use emoji</button>');
+            };
+            // Uploaded icons are squared to fit 64×64 (transparent padding) and kept as a small PNG.
+            const shrinkIcon = file => new Promise((res, rej) => {
+                const fr = new FileReader();
+                fr.onerror = rej;
+                fr.onload = () => { const im = new Image(); im.onerror = rej; im.onload = () => {
+                    const k = Math.min(64 / im.naturalWidth, 64 / im.naturalHeight), c = document.createElement('canvas'); c.width = c.height = 64;
+                    const w = im.naturalWidth * k, h = im.naturalHeight * k;
+                    c.getContext('2d').drawImage(im, (64 - w) / 2, (64 - h) / 2, w, h); res(c.toDataURL('image/png'));
+                }; im.src = fr.result; };
+                fr.readAsDataURL(file);
+            });
             list.addEventListener('click', async e => {
                 const roiBox = e.target.closest('[data-roi]');
                 if (roiBox) {
@@ -1822,11 +1861,13 @@
                 if (ed) {
                     const id = ed.dataset.for, t = TOOLS.find(x => x.id === id), o = ORIG[id] || {};
                     if (e.target.closest('[data-up]')) { ed.querySelector('[data-file]').click(); return; }
+                    if (e.target.closest('[data-iup]')) { ed.querySelector('[data-ifile]').click(); return; }
+                    if (e.target.closest('[data-iclr]')) { pendingIcon = null; setIconPrev(ed, null); return; }
                     const clr = e.target.closest('[data-clr]');
                     if (clr) { const box = clr.closest('[data-color]'); if (!box.classList.contains('unset')) { box.classList.add('unset'); clr.textContent = box.dataset.color === 'hoverColor' ? 'White' : 'Default'; } return; }
                     if (e.target.closest('[data-orig]')) { pendingLogo = null; const pv = ed.querySelector('[data-prev]'); if (pv && o.logo) pv.src = o.logo; return; }
-                    if (e.target.closest('[data-cancel]')) { editing = null; pendingLogo = undefined; return paint(); }
-                    if (e.target.closest('[data-reset1]')) { delete layout.look[id]; applyLook(t); editing = null; pendingLogo = undefined; return commit(); }
+                    if (e.target.closest('[data-cancel]')) { editing = null; pendingLogo = undefined; pendingIcon = undefined; return paint(); }
+                    if (e.target.closest('[data-reset1]')) { delete layout.look[id]; applyLook(t); editing = null; pendingLogo = undefined; pendingIcon = undefined; return commit(); }
                     if (e.target.closest('[data-save]')) {
                         const v = f => (ed.querySelector('[data-f="' + f + '"]') || {}).value;
                         const L = Object.assign({}, layout.look[id]);
@@ -1842,6 +1883,7 @@
                             if (emoji && emoji !== o.emoji) L.emoji = emoji; else delete L.emoji;
                         }
                         if (pendingLogo === null) delete L.logo; else if (pendingLogo) L.logo = pendingLogo;
+                        if (pendingIcon === null) delete L.icon; else if (pendingIcon) L.icon = pendingIcon;
                         ['color', 'hoverColor'].forEach(f => { const c = colorVal(ed.querySelector('[data-color="' + f + '"]')); if (c) L[f] = c; else delete L[f]; });
                         const size = Number(v('size')) || 100; if (size !== 100) L.size = size; else delete L.size;
                         L.mode = v('mode') === 'text' || !(L.logo || o.logo) ? 'text' : 'logo';
@@ -1849,13 +1891,13 @@
                         if (Object.keys(L).length) layout.look[id] = L; else delete layout.look[id];
                         applyLook(t);
                         if (activeId === id) toolbarTitle.textContent = t.emoji + ' ' + t.name;
-                        editing = null; pendingLogo = undefined;
+                        editing = null; pendingLogo = undefined; pendingIcon = undefined;
                         return commit();
                     }
                     return;
                 }
                 const row = e.target.closest('.tc-row'); if (!row) return;
-                if (e.target.closest('[data-edit]')) { editing = editing === row.dataset.id ? null : row.dataset.id; pendingLogo = undefined; return paint(); }
+                if (e.target.closest('[data-edit]')) { editing = editing === row.dataset.id ? null : row.dataset.id; pendingLogo = undefined; pendingIcon = undefined; return paint(); }
                 const id = row.dataset.id, grp = row.dataset.group;
                 const mv = e.target.closest('[data-mv]');
                 if (mv) {
@@ -1889,6 +1931,12 @@
                     layout.roi = Object.assign({}, layout.roi, { off: off });
                     return roiCommit();
                 }
+                if (e.target.matches('[data-ifile]')) {
+                    const f = e.target.files[0]; if (!f) return;
+                    try { pendingIcon = await shrinkIcon(f); setIconPrev(e.target.closest('.tc-edit'), pendingIcon); } catch (x) { alert('Could not read that image.'); }
+                    e.target.value = '';
+                    return;
+                }
                 if (e.target.matches('[data-file]')) {
                     const f = e.target.files[0]; if (!f) return;
                     try {
@@ -1913,6 +1961,20 @@
                 if (!e.target.checked) layout.off.push(id);
                 commit();
             });
+            const paintAddIcon = () => {
+                const b = back.querySelector('#tcIconBtn');
+                b.innerHTML = addIcon ? '<img src="' + addIcon + '" alt="">' : '⬆';
+                b.title = addIcon ? 'Icon uploaded — click to change (✕ in the emoji box to clear)' : 'Upload an icon image instead of an emoji';
+                back.querySelector('#tcEmoji').placeholder = addIcon ? '✕' : '🔗';
+            };
+            back.querySelector('#tcIconBtn').addEventListener('click', () => back.querySelector('#tcIconFile').click());
+            back.querySelector('#tcIconFile').addEventListener('change', async e => {
+                const f = e.target.files[0]; if (!f) return;
+                try { addIcon = await shrinkIcon(f); paintAddIcon(); } catch (x) { alert('Could not read that image.'); }
+                e.target.value = '';
+            });
+            // Typing an emoji clears an uploaded icon (the two are alternatives).
+            back.querySelector('#tcEmoji').addEventListener('input', () => { if (addIcon) { addIcon = null; paintAddIcon(); } });
             back.querySelector('#tcAddBtn').addEventListener('click', () => {
                 const name = back.querySelector('#tcName').value.trim();
                 let url = back.querySelector('#tcUrl').value.trim();
@@ -1923,8 +1985,10 @@
                 err.textContent = '';
                 const c = { id: 'c-' + Math.random().toString(36).slice(2, 8), name: name, url: url, emoji: back.querySelector('#tcEmoji').value.trim() || '🔗', parent: back.querySelector('#tcWhere').value || '', ext: back.querySelector('#tcExt').value === '1' };
                 layout.custom = (layout.custom || []).concat(c);
+                if (addIcon) layout.look[c.id] = Object.assign({}, layout.look[c.id], { icon: addIcon });
                 const nt = customTool(c); TOOLS.push(nt); applyLook(nt);
                 ['#tcName', '#tcUrl', '#tcEmoji'].forEach(sel => back.querySelector(sel).value = '');
+                addIcon = null; paintAddIcon();
                 commit();
             });
             back.querySelector('#tcReset').addEventListener('click', () => {
