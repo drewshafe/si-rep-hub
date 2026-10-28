@@ -54,6 +54,20 @@
 
         .logo-img { height: 40px; }
 
+        /* Active merchant chip (Merchant Folders) */
+        .am-chip { display:flex; align-items:center; gap:10px; margin:10px 12px 2px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.28); background:rgba(255,255,255,0.10); color:#fff; font:inherit; text-align:left; cursor:pointer; }
+        .am-chip:hover { background:rgba(255,255,255,0.18); }
+        .am-chip.is-none { border-style:dashed; }
+        .am-logo { width:30px; height:30px; flex:0 0 auto; border-radius:8px; background:rgba(255,255,255,0.9); color:#4a5fc1; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; overflow:hidden; }
+        .am-logo img { width:100%; height:100%; object-fit:contain; }
+        .am-text { flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.2; }
+        .am-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; opacity:.7; }
+        .am-name { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .am-caret { opacity:.6; font-size:16px; }
+        .sidebar.collapsed .am-chip { display:none; }
+        body.pm .am-chip { border-color:rgba(212,175,55,.35); background:linear-gradient(150deg,#191a22 0%,#0b0c12 100%); color:#ece6d6; }
+        body.pm .am-logo { background:#1a1a20; color:#e9c46a; }
+
         .app-title {
             font-size: 1.05em;
             font-weight: 700;
@@ -611,6 +625,9 @@
                     <div class="app-subtitle">ShipInsure Sales Tools</div>
                 </div>
             </div>
+            <button class="am-chip" id="amChip" type="button" title="Active merchant — every tool saves into this folder. Click to open Merchant Folders.">
+                <span class="am-logo" id="amLogo">📁</span><span class="am-text"><span class="am-label">Active merchant</span><span class="am-name" id="amName">None selected</span></span><span class="am-caret">›</span>
+            </button>
             <div class="nav" id="nav"></div>
             <div class="sidebar-footer">
                 <button class="tabs-cust-btn" id="custTabsBtn" type="button" title="Reorder, hide or add sidebar tabs">⚙ Customize tabs</button>
@@ -642,6 +659,8 @@
 
     <script>
         const TOOLS = [
+            // Merchant Folders — the Hub's home base: one cloud folder per merchant holding every tool's saves.
+            { id: 'folders',      emoji: '📁', name: 'Merchant Folders', url: 'https://drewshafe.github.io/si-rep-hub/folders.html' },
             { id: 'roi',          emoji: '📦', logo: 'roibuilder_logo.png', logoLight: 'roibuilder_logo.png', name: 'ROI Builder', url: 'https://drewshafe.github.io/si-roi-calculator/' },
             { id: 'proposal',     emoji: '📄', logo: 'proposal_logo.png',   logoLight: 'proposal_logo_light.png', name: 'Proposal & MSA Generator',          url: 'https://drewshafe.github.io/si-proposal/' },
             // Merchant Vault — in-house deal rooms (one link per merchant: deck, designs, team, action plan).
@@ -663,10 +682,16 @@
         // Proposal & MSA Generator is off by default but still loads behind the ROI Builder's
         // "Proposal" sub-tab (stacked view), so it stays in TOOLS.
         const LAYOUT_KEY = 'si_hub_layout';
-        const DEFAULT_LAYOUT = () => ({ order: ['roi', 'vault', 'preview', 'proposal', 'gorgias'], off: ['proposal', 'gorgias'], custom: [], look: {},
+        const DEFAULT_LAYOUT = () => ({ order: ['folders', 'roi', 'vault', 'preview', 'proposal', 'gorgias'], foldersSeeded: true, off: ['proposal', 'gorgias'], custom: [], look: {},
                                         kids: { preview: ['widget-designer', 'email-automation', 'claim-wizard'] } });
         let layout = (() => { try { return Object.assign(DEFAULT_LAYOUT(), JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null') || {}); } catch (e) { return DEFAULT_LAYOUT(); } })();
         if (!layout.look) layout.look = {};
+        // Reps who customized their tabs before Merchant Folders existed get it at the top once.
+        if (!layout.foldersSeeded) {
+            layout.order = ['folders'].concat((layout.order || []).filter(id => id !== 'folders'));
+            layout.foldersSeeded = true;
+            try { localStorage.setItem('si_hub_layout', JSON.stringify(layout)); } catch (e) {}
+        }
         const saveLayout = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} };
         // ext: open in its own browser tab instead of inside the hub (sites that block framing,
         // or need Google / SSO sign-in, which refuses to run inside a frame).
@@ -1520,6 +1545,38 @@
 
         function _pmActive() { return document.body.classList.contains('pm'); }
         function _withTheme(url) { return _pmActive() ? url + (url.includes('?') ? '&' : '?') + 'theme=midnight' : url; }
+        // ── Merchant Folders: active-merchant chip + Load requests from the Folders tab ──
+        const FOLDER_KIND_TOOL = { checkout: 'widget-designer', email: 'email-automation', claim: 'claim-wizard', proposal: 'proposal', msa: 'proposal', mnda: 'proposal' };
+        function paintActiveMerchant() {
+            const a = window.SIsb ? SIsb.getActiveFolder() : null;
+            const chip = document.getElementById('amChip'); if (!chip) return;
+            chip.classList.toggle('is-none', !a);
+            document.getElementById('amName').textContent = a ? a.name : 'None selected';
+            const lg = document.getElementById('amLogo');
+            if (a && a.logo) { lg.innerHTML = '<img alt="">'; lg.querySelector('img').src = a.logo; }
+            else lg.textContent = a ? (a.name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() : '📁';
+        }
+        document.getElementById('amChip').addEventListener('click', () => activate('folders'));
+        if (window.SIsb) SIsb.onActiveFolder(paintActiveMerchant);
+        paintActiveMerchant();
+        window.addEventListener('message', e => {
+            const d = e.data;
+            if (!d || d.siHub !== 'folders') return;
+            if (frames.folders && e.source !== frames.folders.contentWindow) return;
+            paintActiveMerchant();
+            if (d.type === 'openScenario' && d.id) {
+                // Same as the ROI sidebar's Cloud Folders row: the branded, editable calc.
+                _hubCloudId = d.id; _hubPastedLink = null;
+                activate('roi');
+                if (frames.roi) frames.roi.src = 'https://drewshafe.github.io/si-roi-calculator/index.html?id=' + encodeURIComponent(d.id);
+            }
+            if (d.type === 'openAsset' && d.id && FOLDER_KIND_TOOL[d.kind]) {
+                const toolId = FOLDER_KIND_TOOL[d.kind], tool = TOOLS.find(t => t.id === toolId);
+                activate(toolId);
+                if (frames[toolId] && tool) frames[toolId].src = _withTheme(tool.url) + (_withTheme(tool.url).includes('?') ? '&' : '?') + 'asset=' + encodeURIComponent(d.id);
+            }
+        });
+
         function activate(id, updateHash = true) {
             const tool = TOOLS.find(t => t.id === id);
             if (!tool) return;
@@ -1531,6 +1588,7 @@
             }
             if (id === activeId) { setGroupsForActive(id); return; }
             activeId = id;
+            if (id === 'folders' && frames.folders) { try { frames.folders.contentWindow.postMessage({ siHub: 'refresh' }, '*'); } catch (e) {} }
             // Leaving the ROI calc tears down the stacked Custom Build editor so it
             // doesn't bleed over other tools' iframes.
             if (id !== 'roi' && _stackedTool) clearStack();

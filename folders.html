@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merchant Folders · ShipInsure Rep Hub</title>
+<link rel="icon" type="image/png" href="Rephubfavi.png">
+<script src="https://drewshafe.github.io/si-roi-calculator/sb.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  :root { --page:#f4f5fb; --card:#fff; --ink:#1d2240; --muted:#6b7090; --line:#e3e5f2; --accent:#4a5fc1; --accent-soft:#eef0ff; --ok:#1f7a45; --ok-soft:#e5f7ec; --danger:#c0392b; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--page); color:var(--ink); min-height:100vh; font-size:14px; }
+  .wrap { max-width:1180px; margin:0 auto; padding:22px 24px 60px; }
+  button, input, select { font:inherit; }
+  .btn { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:8px; padding:8px 13px; font-weight:600; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .btn:hover { border-color:#c9cdf0; }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover { filter:brightness(1.07); }
+  .btn.ghost { background:transparent; }
+  .btn.small { padding:5px 10px; font-size:12px; }
+  .btn.danger { color:var(--danger); border-color:#f1c6c0; }
+  .btn:disabled { opacity:.5; cursor:default; }
+
+  /* top bar */
+  .top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  .top h1 { font-size:22px; font-weight:800; letter-spacing:-.01em; margin-right:auto; }
+  .search { flex:0 1 300px; min-width:180px; border:1px solid var(--line); border-radius:8px; padding:8px 12px; background:var(--card); color:var(--ink); }
+  .search:focus, .field input:focus { outline:none; border-color:var(--accent); }
+  .acct { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:8px; }
+  .chk { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted); cursor:pointer; }
+
+  /* folder grid */
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:14px; }
+  .fcard { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; cursor:pointer; display:flex; flex-direction:column; gap:10px; transition:border-color .15s, box-shadow .15s; position:relative; }
+  .fcard:hover { border-color:#c9cdf0; box-shadow:0 6px 20px rgba(30,40,90,0.07); }
+  .fcard.is-active { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+  .fcard.is-archived { opacity:.6; }
+  .fhead { display:flex; align-items:center; gap:11px; min-width:0; }
+  .logo { width:42px; height:42px; border-radius:10px; flex:0 0 auto; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; overflow:hidden; border:1px solid var(--line); }
+  .logo img { width:100%; height:100%; object-fit:contain; background:#fff; }
+  .fname { font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fsub { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .counts { display:flex; flex-wrap:wrap; gap:5px; }
+  .cnt { font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:20px; padding:2px 8px; }
+  .cnt.none { color:var(--muted); background:#f1f2f7; }
+  .badge { position:absolute; top:12px; right:12px; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--ok); background:var(--ok-soft); border-radius:20px; padding:2px 8px; }
+  .empty { text-align:center; color:var(--muted); padding:50px 20px; background:var(--card); border:1px dashed var(--line); border-radius:14px; }
+  .empty b { display:block; color:var(--ink); font-size:16px; margin-bottom:6px; }
+
+  /* folder detail */
+  .back { font-size:13px; font-weight:600; color:var(--accent); background:none; border:none; cursor:pointer; margin-bottom:14px; }
+  .dhead { display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
+  .dhead .logo { width:56px; height:56px; font-size:20px; border-radius:12px; }
+  .dhead .dtitle { margin-right:auto; min-width:0; }
+  .dhead h2 { font-size:20px; font-weight:800; }
+  .dhead a { color:var(--accent); text-decoration:none; font-size:13px; }
+  .sections { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:14px; }
+  .sec { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+  .sec h3 { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .sec h3 .n { color:var(--accent); background:var(--accent-soft); border-radius:20px; padding:1px 7px; font-size:11px; letter-spacing:0; }
+  .row { display:flex; align-items:center; gap:8px; padding:9px 0; border-top:1px solid #f0f1f7; }
+  .row:first-of-type { border-top:0; }
+  .row .rt { flex:1; min-width:0; }
+  .row .rn { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row .rm { font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .none { font-size:12.5px; color:var(--muted); padding:4px 0 2px; }
+
+  /* modal */
+  .back-dim { position:fixed; inset:0; background:rgba(14,16,40,.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; }
+  .modal { width:min(440px, 100%); background:var(--card); color:var(--ink); border-radius:16px; padding:22px; box-shadow:0 24px 70px rgba(0,0,0,.3); }
+  .modal h3 { font-size:18px; margin-bottom:4px; }
+  .modal p { font-size:12.5px; color:var(--muted); margin-bottom:14px; line-height:1.45; }
+  .field { display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
+  .field label { font-size:12px; font-weight:700; color:var(--muted); }
+  .field input { border:1px solid var(--line); border-radius:8px; padding:9px 11px; background:var(--page); color:var(--ink); }
+  .mactions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+  .err { color:var(--danger); font-size:12.5px; min-height:16px; }
+  .logo-pick { display:flex; align-items:center; gap:10px; }
+
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(90px); background:#222; color:#fff; font-weight:600; font-size:13px; padding:10px 16px; border-radius:8px; transition:transform .25s; z-index:60; }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+
+  /* Project Midnight */
+  body.pm { --page:#07070a; --card:#111116; --ink:#ece6d6; --muted:#9a927f; --line:#26262f; --accent:#d4af37; --accent-soft:#1f1b10; --ok:#7fd39c; --ok-soft:#14261a; }
+  body.pm .btn.primary { color:#0a0a0a; background:linear-gradient(135deg,#b8902d,#e3c56a); border-color:transparent; }
+  body.pm .cnt.none { background:#191920; }
+  body.pm .logo img { background:#1a1a20; }
+
+  @media (max-width:640px) { .wrap { padding:16px 14px 50px; } .sections { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>📁 Merchant Folders</h1>
+    <input class="search" id="search" placeholder="🔎 Search merchants…" autocomplete="off">
+    <label class="chk"><input type="checkbox" id="showArchived"> Show archived</label>
+    <button class="btn primary" id="newBtn" type="button">＋ New folder</button>
+    <div class="acct" id="acct"></div>
+  </div>
+
+  <div id="signin" class="empty" hidden>
+    <b>Sign in to see your team’s merchant folders</b>
+    Same login as the calculators’ ☁ Cloud Save and Merchant Vault.<br><br>
+    <button class="btn primary" id="signinBtn" type="button">Sign in with a magic link</button>
+  </div>
+
+  <div id="listView" hidden>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div id="detailView" hidden>
+    <button class="back" id="backBtn" type="button">← All folders</button>
+    <div class="dhead" id="dhead"></div>
+    <div class="sections" id="sections"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+  // Merchant Folders — the Rep Hub's home base. One folder per merchant holding every tool's
+  // saves (ROI scenarios + merchant_assets). Loading a save asks the Hub to open the right tab.
+  const SECTIONS = [
+    { kind: 'roi',      label: 'ROI Scenarios',        tool: 'ROI Builder' },
+    { kind: 'proposal', label: 'Proposals',            tool: 'Proposal & MSA Generator' },
+    { kind: 'msa',      label: 'MSA + SOW',            tool: 'Proposal & MSA Generator' },
+    { kind: 'mnda',     label: 'MNDA',                 tool: 'Proposal & MSA Generator' },
+    { kind: 'checkout', label: 'Checkout Experience',  tool: 'Checkout Experience' },
+    { kind: 'email',    label: 'Email Automation',     tool: 'Email Automation' },
+    { kind: 'claim',    label: 'Claim Wizard',         tool: 'Claim Wizard' },
+  ];
+  const SHORT = { roi: 'ROI', proposal: 'Proposal', msa: 'MSA', mnda: 'MNDA', checkout: 'Checkout', email: 'Email', claim: 'Claims' };
+  const CALC = 'https://drewshafe.github.io/si-roi-calculator/';
+
+  const $ = id => document.getElementById(id);
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const initials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+  const logoHtml = f => f.logo_path ? '<div class="logo"><img src="' + esc(f.logo_path) + '" alt=""></div>' : '<div class="logo">' + esc(initials(f.name)) + '</div>';
+  function ago(t) {
+    if (!t) return '';
+    const s = (Date.now() - Date.parse(t)) / 1000;
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.round(s / 60) + 'm ago';
+    if (s < 86400) return Math.round(s / 3600) + 'h ago';
+    if (s < 86400 * 30) return Math.round(s / 86400) + 'd ago';
+    return new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  const who = e => (e || '').split('@')[0];
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200); }
+  const hub = msg => { try { parent.postMessage(Object.assign({ siHub: 'folders' }, msg), '*'); } catch (e) {} };
+
+  let user = null, folders = [], assets = [], scenarios = [], openId = null;
+
+  // ── data ──
+  async function loadAll() {
+    const [f, a, c] = await Promise.all([
+      SIsb.listFolders({ includeArchived: true }),
+      SIsb.listAssets(),
+      SIsb.listConfigs()
+    ]);
+    folders = f; assets = a; scenarios = c.filter(x => x.merchant_ref);
+  }
+  const itemsFor = id => ({
+    roi: scenarios.filter(x => x.merchant_ref === id),
+    ...Object.fromEntries(SECTIONS.filter(s => s.kind !== 'roi').map(s => [s.kind, assets.filter(a => a.merchant_ref === id && a.kind === s.kind)]))
+  });
+  // Most recently worked-on first: latest of the folder, its saves and its scenarios.
+  function lastTouched(f) {
+    let t = Date.parse(f.updated_at) || 0;
+    assets.forEach(a => { if (a.merchant_ref === f.id) t = Math.max(t, Date.parse(a.updated_at) || 0); });
+    scenarios.forEach(c => { if (c.merchant_ref === f.id) t = Math.max(t, Date.parse(c.updated_at) || 0); });
+    return t;
+  }
+
+  // ── list view ──
+  function renderList() {
+    const q = $('search').value.trim().toLowerCase(), showArch = $('showArchived').checked;
+    const active = SIsb.getActiveFolder();
+    const list = folders.filter(f => (showArch || !f.archived) && (!q || f.name.toLowerCase().includes(q) || (f.domain || '').toLowerCase().includes(q)))
+      .sort((a, b) => lastTouched(b) - lastTouched(a));
+    $('grid').innerHTML = list.length ? list.map(f => {
+      const it = itemsFor(f.id);
+      const chips = SECTIONS.map(s => it[s.kind].length ? '<span class="cnt">' + it[s.kind].length + ' ' + SHORT[s.kind] + '</span>' : '').join('');
+      return '<div class="fcard' + (active && active.id === f.id ? ' is-active' : '') + (f.archived ? ' is-archived' : '') + '" data-id="' + esc(f.id) + '">' +
+        (active && active.id === f.id ? '<span class="badge">Active</span>' : f.archived ? '<span class="badge" style="color:var(--muted);background:#f1f2f7">Archived</span>' : '') +
+        '<div class="fhead">' + logoHtml(f) + '<div style="min-width:0"><div class="fname">' + esc(f.name) + '</div><div class="fsub">' + esc(f.domain || 'Updated ' + ago(new Date(lastTouched(f)).toISOString())) + '</div></div></div>' +
+        '<div class="counts">' + (chips || '<span class="cnt none">No saves yet</span>') + '</div></div>';
+    }).join('') : '<div class="empty" style="grid-column:1/-1"><b>' + (q ? 'No folders match “' + esc(q) + '”' : 'No merchant folders yet') + '</b>' + (q ? '' : 'Click ＋ New folder to create the first one.') + '</div>';
+  }
+
+  // ── detail view ──
+  function renderDetail() {
+    const f = folders.find(x => x.id === openId);
+    if (!f) { showList(); return; }
+    const active = SIsb.getActiveFolder(), isActive = active && active.id === f.id;
+    const site = f.domain ? (/^https?:/i.test(f.domain) ? f.domain : 'https://' + f.domain) : '';
+    $('dhead').innerHTML = logoHtml(f) +
+      '<div class="dtitle"><h2>' + esc(f.name) + '</h2>' + (site ? '<a href="' + esc(site) + '" target="_blank" rel="noopener">' + esc(f.domain) + ' ↗</a>' : '<span class="fsub">No store URL</span>') + '</div>' +
+      (isActive ? '<button class="btn" type="button" disabled>✓ Active merchant</button>' : '<button class="btn primary" type="button" data-act="activate">Set as active merchant</button>') +
+      '<button class="btn" type="button" data-act="edit">✎ Edit</button>' +
+      '<button class="btn ' + (f.archived ? '' : 'danger') + '" type="button" data-act="archive">' + (f.archived ? 'Restore' : 'Archive') + '</button>';
+    const it = itemsFor(f.id);
+    $('sections').innerHTML = SECTIONS.map(s => {
+      const rows = it[s.kind];
+      return '<div class="sec"><h3>' + esc(s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') + '</h3>' +
+        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — save from the ' + esc(s.tool) + ' tab.</div>') + '</div>';
+    }).join('');
+  }
+  function rowHtml(s, r) {
+    if (s.kind === 'roi') {
+      return '<div class="row" data-kind="roi" data-id="' + esc(r.id) + '"><div class="rt"><div class="rn">' + esc(r.title || r.merchant || 'Scenario') + '</div>' +
+        '<div class="rm">' + (r.updated_by === 'merchant' ? 'Merchant edited · ' : '') + esc(ago(r.updated_at)) + '</div></div>' +
+        '<button class="btn small primary" type="button" data-act="load">Load</button><button class="btn small" type="button" data-act="view" title="Open the branded proposal">↗</button></div>';
+    }
+    return '<div class="row" data-kind="' + s.kind + '" data-id="' + esc(r.id) + '"><div class="rt"><div class="rn">' + esc(r.title || 'Untitled') + '</div>' +
+      '<div class="rm">' + esc(who(r.updated_by_email || r.rep_email)) + ' · ' + esc(ago(r.updated_at)) + '</div></div>' +
+      '<button class="btn small primary" type="button" data-act="load">Load</button>' +
+      (r.doc_url ? '<a class="btn small" href="' + esc(r.doc_url) + '" target="_blank" rel="noopener" title="Open the Google Doc">Doc ↗</a>' : '') +
+      '<button class="btn small ghost" type="button" data-act="del" title="Delete this save">✕</button></div>';
+  }
+
+  function showList() { openId = null; $('detailView').hidden = true; $('listView').hidden = false; renderList(); }
+  function showFolder(id) { openId = id; $('listView').hidden = true; $('detailView').hidden = false; renderDetail(); scrollTo(0, 0); }
+
+  function activate(f) {
+    SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path });
+    hub({ type: 'active' });
+  }
+
+  // ── events ──
+  $('grid').addEventListener('click', e => { const c = e.target.closest('.fcard'); if (c) showFolder(c.dataset.id); });
+  $('backBtn').addEventListener('click', showList);
+  $('search').addEventListener('input', renderList);
+  $('showArchived').addEventListener('change', renderList);
+  $('newBtn').addEventListener('click', () => folderForm(null));
+  $('dhead').addEventListener('click', async e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const f = folders.find(x => x.id === openId); if (!f) return;
+    if (b.dataset.act === 'activate') { activate(f); renderDetail(); toast(f.name + ' is now the active merchant'); }
+    if (b.dataset.act === 'edit') folderForm(f);
+    if (b.dataset.act === 'archive') {
+      if (!f.archived && !confirm('Archive “' + f.name + '”? Its saves are kept; you can restore it from “Show archived”.')) return;
+      try {
+        Object.assign(f, await SIsb.updateFolder(f.id, { archived: !f.archived }));
+        const act = SIsb.getActiveFolder();
+        if (f.archived && act && act.id === f.id) { SIsb.setActiveFolder(null); hub({ type: 'active' }); }
+        toast(f.archived ? 'Folder archived' : 'Folder restored');
+        f.archived ? showList() : renderDetail();
+      } catch (x) { toast('Couldn’t update: ' + (x.message || x)); }
+    }
+  });
+  $('sections').addEventListener('click', async e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const row = b.closest('.row'), kind = row.dataset.kind, id = row.dataset.id;
+    const f = folders.find(x => x.id === openId);
+    if (b.dataset.act === 'view') { window.open(CALC + 'proposal.html?id=' + encodeURIComponent(id), '_blank', 'noopener'); return; }
+    if (b.dataset.act === 'load') {
+      // Loading from a folder makes it the active merchant, then the Hub opens the right tab.
+      if (f) SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path });
+      if (kind === 'roi') hub({ type: 'openScenario', id: id });
+      else hub({ type: 'openAsset', kind: kind, id: id });
+      if (parent === window) toast('Open the Rep Hub to load saves into its tabs');
+      return;
+    }
+    if (b.dataset.act === 'del') {
+      const a = assets.find(x => x.id === id);
+      if (!confirm('Delete “' + ((a && a.title) || 'this save') + '”? This can’t be undone.')) return;
+      try {
+        await SIsb.deleteAsset(id);
+        // RLS lets only the creator delete; a no-op delete means it belonged to someone else.
+        const still = (await SIsb.listAssets(openId)).some(x => x.id === id);
+        if (still) { toast('Only the rep who saved it can delete it'); return; }
+        assets = assets.filter(x => x.id !== id);
+        renderDetail(); toast('Deleted');
+      } catch (x) { toast('Couldn’t delete: ' + (x.message || x)); }
+    }
+  });
+
+  // ── create / edit folder ──
+  function folderForm(f) {
+    const dim = document.createElement('div');
+    dim.className = 'back-dim';
+    dim.innerHTML = '<form class="modal" novalidate><h3>' + (f ? 'Edit folder' : 'New merchant folder') + '</h3>' +
+      '<p>' + (f ? 'Renaming keeps every save in this folder.' : 'One folder per merchant. Every tool saves into the active merchant’s folder.') + '</p>' +
+      '<div class="field"><label>Merchant name</label><input id="fName" value="' + esc(f ? f.name : '') + '" placeholder="e.g. Original Grain" required></div>' +
+      '<div class="field"><label>Store URL (optional)</label><input id="fDomain" value="' + esc(f ? f.domain || '' : '') + '" placeholder="originalgrain.com"></div>' +
+      '<div class="field"><label>Logo (optional)</label><div class="logo-pick"><div id="fLogoPrev">' + (f ? logoHtml(f) : logoHtml({ name: '?' })) + '</div>' +
+      '<button class="btn small" type="button" id="fLogoBtn">Upload logo</button>' + (f && f.logo_path ? '<button class="btn small ghost" type="button" id="fLogoClear">Remove</button>' : '') +
+      '<input type="file" id="fLogo" accept="image/*" hidden></div></div>' +
+      '<div class="err" id="fErr"></div>' +
+      '<div class="mactions"><button class="btn" type="button" id="fCancel">Cancel</button><button class="btn primary" type="submit" id="fSave">' + (f ? 'Save' : 'Create folder') + '</button></div></form>';
+    document.body.appendChild(dim);
+    let logoData, logoCleared = false;   // undefined = unchanged
+    const close = () => dim.remove();
+    dim.addEventListener('mousedown', e => { if (e.target === dim) close(); });
+    dim.querySelector('#fCancel').onclick = close;
+    dim.querySelector('#fLogoBtn').onclick = () => dim.querySelector('#fLogo').click();
+    const clr = dim.querySelector('#fLogoClear'); if (clr) clr.onclick = () => { logoCleared = true; logoData = undefined; dim.querySelector('#fLogoPrev').innerHTML = logoHtml({ name: dim.querySelector('#fName').value || '?' }); };
+    dim.querySelector('#fLogo').onchange = e => {
+      const file = e.target.files[0]; if (!file) return;
+      const r = new FileReader();
+      r.onload = () => { const im = new Image(); im.onload = () => {
+        const k = Math.min(1, 256 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+        c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        logoData = c.toDataURL('image/png'); logoCleared = false;
+        dim.querySelector('#fLogoPrev').innerHTML = '<div class="logo"><img src="' + logoData + '" alt=""></div>';
+      }; im.src = r.result; };
+      r.readAsDataURL(file);
+    };
+    dim.querySelector('form').onsubmit = async e => {
+      e.preventDefault();
+      const name = dim.querySelector('#fName').value.trim(), domain = dim.querySelector('#fDomain').value.trim().replace(/^https?:\/\//i, '').replace(/\/$/, '');
+      const err = dim.querySelector('#fErr');
+      if (!name) { err.textContent = 'Enter the merchant’s name.'; return; }
+      const save = dim.querySelector('#fSave'); save.disabled = true; err.textContent = '';
+      try {
+        let logoUrl;
+        if (logoData) logoUrl = await SIsb.uploadLogo(logoData);
+        else if (logoCleared) logoUrl = null;
+        let saved;
+        if (f) {
+          if (name.toLowerCase() !== f.name.toLowerCase() && folders.some(x => x.id !== f.id && x.name.toLowerCase() === name.toLowerCase())) throw new Error('Another folder already uses that name.');
+          saved = await SIsb.updateFolder(f.id, { name: name, domain: domain || null, logoUrl: logoUrl });
+          Object.assign(f, saved);
+          const act = SIsb.getActiveFolder(); if (act && act.id === f.id) { SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path }); hub({ type: 'active' }); }
+          close(); renderDetail(); toast('Folder updated');
+        } else {
+          saved = await SIsb.createFolder({ name: name, domain: domain || null, logoUrl: logoUrl || null });
+          const i = folders.findIndex(x => x.id === saved.id);
+          if (i >= 0) folders[i] = Object.assign(folders[i], saved); else folders.push(saved);
+          activate(saved);
+          close(); showFolder(saved.id); toast(saved.existed ? 'That folder already existed — opened it' : 'Folder created and set as active');
+        }
+      } catch (x) { err.textContent = x.message || String(x); save.disabled = false; }
+    };
+    setTimeout(() => dim.querySelector('#fName').focus(), 30);
+  }
+
+  // ── auth ──
+  async function signIn() {
+    const email = prompt('Sign in to Merchant Folders.\nEnter your ShipInsure email — we’ll send a magic link:');
+    if (!email) return;
+    try {
+      const { error } = await SIsb.signInMagic(email.trim());
+      toast(error ? 'Error: ' + error.message : 'Magic link sent to ' + email.trim() + ' — open it in this browser, then come back');
+    } catch (x) { toast('Error: ' + (x.message || x)); }
+  }
+  $('signinBtn').addEventListener('click', signIn);
+
+  async function boot() {
+    try { user = await SIsb.currentUser(); } catch (e) { user = null; }
+    $('acct').innerHTML = user ? esc(user.email) + ' · <button class="btn small ghost" type="button" id="soBtn">Sign out</button>' : '';
+    if (user) $('soBtn').onclick = async () => { await SIsb.signOut(); location.reload(); };
+    $('newBtn').hidden = !user;
+    if (!user) { $('signin').hidden = false; return; }
+    try { await loadAll(); }
+    catch (x) { $('listView').hidden = false; $('grid').innerHTML = '<div class="empty" style="grid-column:1/-1"><b>Couldn’t load folders</b>' + esc(x.message || x) + '</div>'; return; }
+    const want = (location.hash.match(/f=([\w-]+)/) || [])[1];
+    want && folders.some(f => f.id === want) ? showFolder(want) : showList();
+  }
+
+  // Active merchant changed elsewhere (another tab or the Hub chip) → repaint.
+  SIsb.onActiveFolder(() => openId ? renderDetail() : renderList());
+  // Rep Hub theme hand-off
+  const setTheme = t => document.body.classList.toggle('pm', t === 'midnight');
+  setTheme(new URLSearchParams(location.search).get('theme'));
+  window.addEventListener('message', e => {
+    const d = e.data || {};
+    if (d.siHub === 'apply' && d.theme) setTheme(d.theme);
+    if (d.siHub === 'refresh') loadAll().then(() => openId ? renderDetail() : renderList()).catch(() => {});
+  });
+  boot();
+</script>
+</body>
+</html>
