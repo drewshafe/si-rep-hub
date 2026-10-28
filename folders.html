@@ -68,6 +68,7 @@
   .row .pick { flex:0 0 auto; width:16px; height:16px; cursor:pointer; accent-color:var(--accent); }
   .row .ord { flex:0 0 auto; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#fff; font-size:11px; font-weight:800; display:none; align-items:center; justify-content:center; }
   .row .ord.on { display:inline-flex; }
+  .row .rn-edit { width:100%; font-weight:600; border:1px solid var(--accent); border-radius:6px; padding:3px 7px; outline:none; }
   .optbar { display:none; gap:6px; margin-top:8px; padding-top:10px; border-top:1px dashed var(--line); align-items:center; }
   .optbar.on { display:flex; }
   .optbar .hint { font-size:11.5px; color:var(--muted); margin-right:auto; }
@@ -234,10 +235,12 @@
       return '<div class="row" data-kind="roi" data-id="' + esc(r.id) + '"><input type="checkbox" class="pick" data-act="pick" title="Include in the merchant options link"' + (pos >= 0 ? ' checked' : '') + '>' +
         '<span class="ord' + (pos >= 0 ? ' on' : '') + '">' + (pos >= 0 ? pos + 1 : '') + '</span><div class="rt"><div class="rn">' + esc(r.title || r.merchant || 'Scenario') + '</div>' +
         '<div class="rm">' + (r.updated_by === 'merchant' ? 'Merchant edited · ' : '') + esc(ago(r.updated_at)) + '</div></div>' +
+        '<button class="btn small ghost" type="button" data-act="rename" title="Rename — also the tab label on a multi-option link">✎</button>' +
         '<button class="btn small primary" type="button" data-act="load">Load</button><button class="btn small" type="button" data-act="view" title="Open the branded proposal">↗</button></div>';
     }
     return '<div class="row" data-kind="' + s.kind + '" data-id="' + esc(r.id) + '"><div class="rt"><div class="rn">' + esc(r.title || 'Untitled') + '</div>' +
       '<div class="rm">' + esc(who(r.updated_by_email || r.rep_email)) + ' · ' + esc(ago(r.updated_at)) + '</div></div>' +
+      '<button class="btn small ghost" type="button" data-act="rename" title="Rename">✎</button>' +
       '<button class="btn small primary" type="button" data-act="load">Load</button>' +
       (r.doc_url ? '<a class="btn small" href="' + esc(r.doc_url) + '" target="_blank" rel="noopener" title="Open the Google Doc">Doc ↗</a>' : '') +
       '<button class="btn small ghost" type="button" data-act="del" title="Delete this save">✕</button></div>';
@@ -287,6 +290,7 @@
       if (b.checked && i < 0) picks.push(id); else if (!b.checked && i >= 0) picks.splice(i, 1);
       renderDetail(); return;
     }
+    if (b.dataset.act === 'rename') return renameRow(row, kind, id);
     const f = folders.find(x => x.id === openId);
     if (b.dataset.act === 'view') { window.open(CALC + 'proposal.html?id=' + encodeURIComponent(id), '_blank', 'noopener'); return; }
     if (b.dataset.act === 'load') {
@@ -310,6 +314,31 @@
       } catch (x) { toast('Couldn’t delete: ' + (x.message || x)); }
     }
   });
+
+  // Inline rename: the title turns into a text box — Enter/click away saves, Esc cancels.
+  function renameRow(row, kind, id) {
+    const list = kind === 'roi' ? scenarios : assets;
+    const item = list.find(x => x.id === id); if (!item) return;
+    const rn = row.querySelector('.rn'); if (!rn || row.querySelector('.rn-edit')) return;
+    const old = item.title || '';
+    const inp = document.createElement('input');
+    inp.className = 'rn-edit'; inp.value = old; inp.maxLength = 120;
+    inp.placeholder = kind === 'roi' ? 'e.g. Protection + Returns' : 'Name this save';
+    rn.replaceWith(inp); inp.focus(); inp.select();
+    let done = false;
+    const finish = async save => {
+      if (done) return; done = true;
+      const title = inp.value.trim();
+      if (!save || !title || title === old) { renderDetail(); return; }
+      inp.disabled = true;
+      try {
+        await SIsb.renameSave(kind, id, title);
+        item.title = title; renderDetail(); toast('Renamed to “' + title + '”');
+      } catch (x) { renderDetail(); toast('Couldn’t rename: ' + (x.message || x)); }
+    };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') finish(true); if (e.key === 'Escape') finish(false); });
+    inp.addEventListener('blur', () => finish(true));
+  }
 
   $('unfiled').addEventListener('click', async e => {
     const b = e.target.closest('[data-act]'); if (!b) return;
