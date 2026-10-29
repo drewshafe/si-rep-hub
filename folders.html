@@ -144,7 +144,9 @@
     { kind: 'claim',    label: 'Claim Wizard',         tool: 'Claim Wizard' },
   ];
   // Sections where a rep can also file an existing document (upload or link) instead of generating one.
-  const DOC_KINDS = { proposal: 1, msa: 1, mnda: 1 };
+  const DOC_KINDS = { proposal: 1, msa: 1, mnda: 1, checkout: 1, email: 1, claim: 1 };
+  // Of those, the tool sections file existing mockups (Figma exports, screenshots) — images allowed too.
+  const MOCKUP_KINDS = { checkout: 1, email: 1, claim: 1 };
   const SHORT = { roi: 'ROI', proposal: 'Proposal', msa: 'MSA', mnda: 'MNDA', checkout: 'Checkout', email: 'Email', claim: 'Claims' };
   const CALC = 'https://drewshafe.github.io/si-roi-calculator/';
 
@@ -226,8 +228,8 @@
     $('sections').innerHTML = SECTIONS.map(s => {
       const rows = it[s.kind];
       return '<div class="sec" data-sec="' + s.kind + '"><h3>' + esc(s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') +
-        (DOC_KINDS[s.kind] ? '<span class="docacts"><button class="btn small" type="button" data-act="upload" title="Upload an existing PDF or Word file">⬆ Upload</button><button class="btn small" type="button" data-act="addlink" title="File a link to an existing doc (e.g. Google Doc)">🔗 Add link</button></span>' : '') + '</h3>' +
-        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : 'save from the ' + esc(s.tool) + ' tab.') + '</div>') +
+        (DOC_KINDS[s.kind] ? '<span class="docacts"><button class="btn small" type="button" data-act="upload" title="' + (MOCKUP_KINDS[s.kind] ? 'Upload an existing mockup (PDF or image)' : 'Upload an existing PDF or Word file') + '">⬆ Upload</button><button class="btn small" type="button" data-act="addlink" title="' + (MOCKUP_KINDS[s.kind] ? 'File a link to an existing mockup (e.g. Figma)' : 'File a link to an existing doc (e.g. Google Doc)') + '">🔗 Add link</button></span>' : '') + '</h3>' +
+        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (MOCKUP_KINDS[s.kind] ? 'save from the ' + esc(s.tool) + ' tab, or upload / link an existing mockup.' : DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : 'save from the ' + esc(s.tool) + ' tab.') + '</div>') +
         (s.kind === 'roi' && rows.length ? '<div class="optbar' + (picks.length ? ' on' : '') + '"><span class="hint">Tick scenarios in the order you want their tabs</span>' +
           '<button class="btn small primary" type="button" data-act="optcopy">📋 Copy ' + (picks.length > 1 ? 'options link (' + picks.length + ')' : 'link') + '</button>' +
           '<button class="btn small" type="button" data-act="optopen" title="Open in a new window">↗</button></div>' : '') + '</div>';
@@ -339,13 +341,13 @@
     }
   });
 
-  // File an existing Proposal / MSA / MNDA — upload a PDF/Word file or paste a link.
+  // File an existing Proposal / MSA / MNDA (PDF/Word) or Checkout / Email / Claim mockup (PDF/image) — upload or paste a link.
   const MAX_DOC = 25 * 1024 * 1024;
   function addDoc(kind, how) {
     const f = folders.find(x => x.id === openId); if (!f) return;
     const label = (SECTIONS.find(s => s.kind === kind) || {}).label || kind;
     if (how === 'addlink') {
-      let url = (prompt('Paste the link to the existing ' + label + ' (e.g. a Google Doc):') || '').trim();
+      let url = (prompt('Paste the link to the existing ' + label + (MOCKUP_KINDS[kind] ? ' mockup (e.g. a Figma file):' : ' (e.g. a Google Doc):')) || '').trim();
       if (!url) return;
       if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
       try { new URL(url); } catch (x) { toast('That doesn’t look like a link'); return; }
@@ -353,7 +355,9 @@
       return saveDoc({ merchant_ref: f.id, kind: kind, title: title, doc_url: url, data: { source: 'link' } }, 'Linked');
     }
     const inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    inp.type = 'file'; inp.accept = MOCKUP_KINDS[kind]
+      ? '.pdf,.png,.jpg,.jpeg,.gif,.webp,application/pdf,image/png,image/jpeg,image/gif,image/webp'
+      : '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     inp.onchange = async () => {
       const file = inp.files[0]; if (!file) return;
       if (file.size > MAX_DOC) { toast('That file is over 25 MB'); return; }

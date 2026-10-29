@@ -121,6 +121,8 @@
       try {
         const r = await SIsb.getAsset(id);
         if ((o.acceptKinds || [o.kind]).indexOf(r.kind) < 0) throw new Error('That save is for a different tool');
+        const src = (r.data || {}).source;
+        if (src === 'upload' || src === 'link') throw new Error('That’s an uploaded / linked file — open it from Merchant Folders');
         o.applyData(r.data || {}, r.kind, r);
         // Only a save of this bar's own kind becomes the one Save updates (e.g. opening an
         // MSA draft in the generator must not let Save overwrite it as a proposal).
@@ -146,7 +148,8 @@
       const dd = document.createElement('div'); dd.className = 'sifb-dd'; dd.innerHTML = '<div class="em">Loading…</div>';
       bar.appendChild(dd);
       try {
-        const rows = await SIsb.listAssets(a.id, o.kind);
+        // Uploaded / linked files (Merchant Folders ⬆ / 🔗) have no tool state — they open from the folder, not here.
+        const rows = (await SIsb.listAssets(a.id, o.kind)).filter(r => r.source !== 'upload' && r.source !== 'link');
         dd.innerHTML = rows.length ? rows.map(r => '<div class="it' + (cur && cur.id === r.id ? ' cur' : '') + '" data-id="' + esc(r.id) + '"><b>' + esc(r.title || 'Untitled') + '</b><span>' +
           esc((r.updated_by_email || r.rep_email || '').split('@')[0]) + ' · ' + esc(ago(r.updated_at)) + '</span></div>').join('')
           : '<div class="em">No ' + esc(o.tool) + ' saves in ' + esc(a.name) + ' yet.</div>';
