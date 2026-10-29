@@ -5,7 +5,7 @@
 //     kind: 'email',                    // merchant_assets.kind
 //     tool: 'Email Automation',
 //     before: document.querySelector('.wrap'),   // the bar is inserted before this element
-//     getData: () => ({...}),           // the tool's full state to save
+//     getData: () => ({...}),           // the tool's full state to save (may return a Promise)
 //     applyData: (data, kind, row) => {...},   // restore a saved state
 //     acceptKinds: ['proposal','msa'],  // optional: other kinds this page can open via ?asset=
 //     defaultTitle: () => 'Email – Acme',
@@ -109,7 +109,7 @@
       if (title == null) return null;
       title = title.trim() || ((o.defaultTitle && o.defaultTitle()) || o.tool);
       try {
-        const res = await SIsb.saveAsset({ id: updating ? cur.id : undefined, merchant_ref: a.id, kind: o.kind, title: title, data: o.getData() });
+        const res = await SIsb.saveAsset({ id: updating ? cur.id : undefined, merchant_ref: a.id, kind: o.kind, title: title, data: await o.getData() });
         cur = { id: res.id, title: title, folder: a.id, updated_at: res.updated_at || new Date().toISOString() };
         setUrl(res.id); paint();
         toast((updating ? 'Updated “' : 'Saved “') + title + '” to ' + a.name);
@@ -189,5 +189,6 @@
     return { save: save, load: loadId, current: () => cur, refresh: paint };
   }
 
-  window.SIFolderBar = { mount: mount };
+  // asyncData: getData may return a Promise (tools check this before relying on it).
+  window.SIFolderBar = { mount: mount, asyncData: true };
 })();
