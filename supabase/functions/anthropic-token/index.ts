@@ -30,6 +30,25 @@ function cors(origin: string | null): Record<string, string> {
   };
 }
 
+// The parts of a login token the federation rule checks (no signature, no full email).
+function peek(jwt: string) {
+  try {
+    const part = (x: string) => JSON.parse(atob(x.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (x.length % 4)) % 4)));
+    const [h, p] = jwt.split('.').slice(0, 2).map(part);
+    return { alg: h.alg, kid: h.kid || null, iss: p.iss, aud: p.aud, role: p.role, email_domain: String(p.email || '').split('@')[1] || null,
+      lifetime_s: p.exp - p.iat, expires_in_s: p.exp - Math.floor(Date.now() / 1000), has_jti: 'jti' in p, has_sub: !!p.sub };
+  } catch (_) { return null; }
+}
+function hint(t: ReturnType<typeof peek>) {
+  if (!t) return 'The login token could not be read.';
+  if (/^HS/.test(t.alg)) return 'Supabase signed this login with the legacy shared secret (' + t.alg + '). Anthropic only accepts ES256/RS256: in Supabase → Project Settings → JWT Keys, rotate to the ES256 key, then sign out and back in.';
+  if (!t.kid) return 'The login token has no key id (kid).';
+  if (t.iss !== 'https://oiljklutlmtztascnkpm.supabase.co/auth/v1') return 'Token issuer is ' + t.iss + ', not the registered issuer URL.';
+  if (t.lifetime_s > 3600) return 'Login tokens last ' + t.lifetime_s + 's; the issuer accepts at most 1 hour. Raise the issuer\'s maximum token lifetime in the Console.';
+  if (t.expires_in_s < -30) return 'The login token had expired; sign out and back in.';
+  return 'Token looks right (alg ' + t.alg + ', aud ' + JSON.stringify(t.aud) + ', role ' + t.role + ', @' + t.email_domain + '), so the federation rule is refusing it: check its audience, subject and condition, and the Console\'s authentication history.';
+}
+
 Deno.serve(async (req) => {
   const h = cors(req.headers.get('origin'));
   const json = (body: unknown, status = 200) =>
@@ -48,9 +67,10 @@ Deno.serve(async (req) => {
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
-    // Anthropic keeps denials opaque ("Authentication failed"); the reason is in the
-    // Console's Workload identity → authentication history.
-    return json({ error: (j && j.error && j.error.message) || 'Token exchange failed', status: r.status }, r.status === 401 ? 401 : 502);
+    // Anthropic keeps denials opaque ("Authentication failed"; the reason is in the Console's
+    // Workload identity → authentication history), so name what in this token could fail the rule.
+    const t = peek(jwt);
+    return json({ error: (j && j.error && j.error.message) || 'Token exchange failed', status: r.status, token: t, hint: hint(t) }, r.status === 401 ? 401 : 502);
   }
   return json({ access_token: j.access_token, expires_in: j.expires_in, scope: j.scope });
 });
