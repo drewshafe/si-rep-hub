@@ -305,13 +305,13 @@
         .nav-item.has-logo { padding: 10px 12px; }
 
         /* ── Grouped sub-tabs (Other Calculator) ── */
-        .nav-item.nav-group .group-caret {
+        .nav-item.nav-group .group-caret, .nav-item.nav-parent .group-caret {
             margin-left: auto; font-size: 0.85em; opacity: 0.7;
             transition: transform 0.25s ease;
         }
-        .nav-item.nav-group .group-caret + .key-hint { margin-left: 8px; }
-        .nav-item.nav-group.expanded { background: rgba(255,255,255,0.14); }
-        .nav-item.nav-group.expanded .group-caret { transform: rotate(180deg); }
+        .nav-item.nav-group .group-caret + .key-hint, .nav-item.nav-parent .group-caret + .key-hint { margin-left: 8px; }
+        .nav-item.nav-group.expanded, .nav-item.nav-parent.expanded:not(.active) { background: rgba(255,255,255,0.14); }
+        .nav-item.nav-group.expanded .group-caret, .nav-item.nav-parent.expanded .group-caret { transform: rotate(180deg); }
         .nav-sub {
             display: flex; flex-direction: column; gap: 6px;
             max-height: 0; overflow: hidden; opacity: 0;
@@ -741,6 +741,13 @@
         const openExternal = url => { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); };
         const customTool = c => ({ id: c.id, emoji: c.emoji || '🔗', name: c.name, url: c.url, parent: c.parent || undefined, custom: true, ext: !!c.ext });
         (layout.custom || []).forEach(c => TOOLS.push(customTool(c)));
+        // A custom tab can sit under any top-level tab; if that tab is gone (or is itself a sub tab), it's its own tab again.
+        (layout.custom || []).forEach(c => {
+            const p = c.parent && TOOLS.find(t => t.id === c.parent);
+            if (c.parent && (!p || p.parent || p.hidden)) { c.parent = ''; TOOLS.find(t => t.id === c.id).parent = undefined; }
+        });
+        // Tabs a custom tab can go under: every top-level tab except itself and ones that open outside the hub.
+        const parentChoices = selfId => topTools().filter(t => !t.ext && t.id !== selfId);
         // Per-tab look (name, emoji, logo or text) — layout.look[id] = {name, emoji, mode:'logo'|'text', logo:dataURL}
         const ORIG = {};
         const snapOrig = t => { if (!ORIG[t.id]) ORIG[t.id] = { name: t.name, emoji: t.emoji, logo: t.logo || null, logoLight: t.logoLight || null }; };
@@ -816,9 +823,10 @@
             const addBtn = (tool, into) => {
                 const i = RENDERED.length; RENDERED.push(tool);
                 const btn = document.createElement('button');
-                btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '') + (tool.group ? ' nav-group' : '') + (tool.parent ? ' nav-sub-item' : '') + (tool.customLook ? ' custom-look' : '');
+                const holds = !tool.group && (tool.children || []).length;
+                btn.className = 'nav-item' + (tool.logo ? ' has-logo' : '') + (tool.group ? ' nav-group' : '') + (holds ? ' nav-parent' : '') + (tool.parent ? ' nav-sub-item' : '') + (tool.customLook ? ' custom-look' : '');
                 btn.id = 'nav-' + tool.id;
-                const caret = tool.group ? '<span class="group-caret">▾</span>' : '';
+                const caret = tool.group || holds ? '<span class="group-caret">▾</span>' : '';
                 const hint = i < 9 ? `<span class="key-hint">${i + 1}</span>` : '';
                 btn.innerHTML = tool.logo
                     ? `<span class="nav-logo-wrap"><img class="nav-logo"><span class="nav-logo-tint"></span></span>${caret}${hint}`
@@ -861,10 +869,21 @@
                     nav.appendChild(sub);
                     kids.forEach(k => addBtn(k, sub));
                 } else {
+                    // A regular tab can also hold sub tabs (custom tabs placed under it): it still
+                    // opens its own tool, and its sub tabs show below while it or one of them is open.
+                    const kids = kidTools(tool).filter(k => !isOff(k.id));
+                    tool.children = kids.map(k => k.id);
                     addBtn(tool);
                     // The ROI Master Calculator tab has a "REP Inputs" sub-panel that drives
                     // the calculator iframe live via postMessage (built once, kept across re-renders).
                     if (tool.id === 'roi') { if (!repInputsEl) repInputsEl = buildRepInputs(); nav.appendChild(repInputsEl); }
+                    if (kids.length) {
+                        const sub = document.createElement('div');
+                        sub.className = 'nav-sub';
+                        sub.id = 'nav-sub-' + tool.id;
+                        nav.appendChild(sub);
+                        kids.forEach(k => addBtn(k, sub));
+                    }
                 }
             });
             const kh = document.getElementById('keyHint');
@@ -1536,7 +1555,7 @@
         // A group is expanded iff the active tool is that group or one of its children.
         function toggleMinimize(id) {
             const tool = TOOLS.find(t => t.id === id); if (!tool) return;
-            const gid = tool.group ? tool.id : tool.parent;
+            const gid = tool.group || (tool.children || []).length ? tool.id : tool.parent;
             if (gid) {
                 const sub = document.getElementById('nav-sub-' + gid), head = document.getElementById('nav-' + gid);
                 const open = sub ? sub.classList.toggle('open') : false;
@@ -1546,8 +1565,9 @@
         }
 
         function setGroupsForActive(id) {
-            TOOLS.filter(t => t.group).forEach(g => {
-                const inSection = (id === g.id) || (g.children || []).includes(id);
+            TOOLS.filter(t => t.group || (t.children || []).length).forEach(g => {
+                // A tab that opens in a new browser tab never becomes "open" here, so its sub tabs stay shown.
+                const inSection = (id === g.id) || (g.children || []).includes(id) || !!g.ext;
                 const sub  = document.getElementById('nav-sub-' + g.id);
                 const head = document.getElementById('nav-' + g.id);
                 if (sub)  sub.classList.toggle('open', inSection);
@@ -1746,7 +1766,7 @@
                 '<div class="tc-add"><div class="tc-h">Add a tab</div>' +
                 '<div class="tc-iconpick"><input id="tcEmoji" maxlength="4" placeholder="🔗" aria-label="Icon"><button type="button" id="tcIconBtn" title="Upload an icon image instead of an emoji">⬆</button><input type="file" accept="image/*" id="tcIconFile" hidden></div><input id="tcName" placeholder="Tab name (e.g. Pricing sheet)" aria-label="Tab name">' +
                 '<input id="tcUrl" class="tc-full" placeholder="Link (https://…)" aria-label="Link">' +
-                '<select id="tcWhere" class="tc-full" aria-label="Where"><option value="">In the sidebar</option><option value="preview">Inside Preview Designer</option></select>' +
+                '<select id="tcWhere" class="tc-full" aria-label="Where"></select>' +
                 '<select id="tcExt" class="tc-full" aria-label="Opens"><option value="">Opens inside the hub</option><option value="1">Opens in a new browser tab — for sites with Google / SSO sign-in</option></select>' +
                 '<div class="tc-note">Google and most single sign-on pages refuse to load inside the hub (you’ll see a 403). Pick “new browser tab” for those.</div>' +
                 '<div class="tc-err" id="tcErr"></div>' +
@@ -1783,6 +1803,9 @@
             // Color picker that can be "unset" (falls back to the default shown on its button).
             const colorCtl = (f, v, dflt) => '<span class="tc-color' + (v ? '' : ' unset') + '" data-color="' + f + '"><input type="color" data-f="' + f + '" value="' + esc(v || '#ffffff') + '">' +
                 '<button type="button" class="tc-clr" data-clr title="Back to default">' + (v ? 'Reset' : dflt) + '</button></span>';
+            // "Its own tab" or "Sub tab under …" any top-level tab.
+            const whereOptions = (selfId, cur) => '<option value="">Its own tab in the sidebar</option>' +
+                parentChoices(selfId).concat(cur && !parentChoices(selfId).some(p => p.id === cur) ? TOOLS.filter(p => p.id === cur) : []).map(p => '<option value="' + p.id + '"' + (p.id === cur ? ' selected' : '') + '>Sub tab under ' + esc(p.name) + '</option>').join('');
             const colorVal = box => box && !box.classList.contains('unset') ? box.querySelector('input').value : '';
             const editHtml = (t, kid) => {
                 const o = ORIG[t.id] || {}, L = layout.look[t.id] || {};
@@ -1793,7 +1816,10 @@
                         ((L.icon && pendingIcon !== null) || pendingIcon ? '<img class="tc-ico-prev" data-iprev src="' + esc(pendingIcon || L.icon) + '" alt="">' : '') +
                         '<button type="button" class="tc-mini" data-iup>Upload icon</button>' + ((L.icon && pendingIcon !== null) || pendingIcon ? '<button type="button" class="tc-mini" data-iclr>Use emoji</button>' : '') +
                         '<input type="file" accept="image/*" data-ifile hidden></div>' +
-                    (t.custom ? '<label>Link</label><input data-f="url" value="' + esc(t.url) + '">' : '') +
+                    (t.custom ? '<label>Link</label><input data-f="url" value="' + esc(t.url) + '">' +
+                        '<label>Placement</label>' + (TOOLS.some(k => k.parent === t.id)
+                            ? '<span style="font-size:12px;color:#6b7090">Its own tab — it has sub tabs under it</span>'
+                            : '<select data-f="parent">' + whereOptions(t.id, t.parent) + '</select>') : '') +
                     '<label>Show as</label><select data-f="mode"><option value="logo"' + (L.mode !== 'text' && logo ? ' selected' : '') + (logo ? '' : ' disabled') + '>Logo</option><option value="text"' + (L.mode === 'text' || !logo ? ' selected' : '') + '>Text (icon + name)</option></select>' +
                     '<label>Logo</label><div class="tc-logo-box">' + (logo ? '<img class="tc-logo-prev" data-prev src="' + esc(logo) + '" alt="">' : '<span style="font-size:12px;color:#6b7090" data-prev>No logo yet</span>') +
                     '<button type="button" class="tc-mini" data-up>Upload logo</button>' + (L.logo && o.logo ? '<button type="button" class="tc-mini" data-orig>Use original logo</button>' : '') +
@@ -1806,12 +1832,13 @@
             };
             const paint = () => {
                 const tops = topTools();
-                list.innerHTML = tops.map((t, i) => rowHtml(t, i, tops.length, false) + (t.group ? kidTools(t).map((k, j, a) => rowHtml(k, j, a.length, true)).join('') : '')).join('');
+                list.innerHTML = tops.map((t, i) => rowHtml(t, i, tops.length, false) + kidTools(t).map((k, j, a) => rowHtml(k, j, a.length, true)).join('')).join('');
             };
             const commit = () => {
                 layout.order = topTools().map(t => t.id);
-                TOOLS.filter(t => t.group).forEach(g => { layout.kids[g.id] = kidTools(g).map(k => k.id); });
-                saveLayout(); renderNav(); paint();
+                layout.kids = layout.kids || {};
+                topTools().forEach(g => { const k = kidTools(g).map(x => x.id); if (k.length) layout.kids[g.id] = k; else if (!g.group) delete layout.kids[g.id]; });
+                saveLayout(); renderNav(); paint(); paintWhere();
             };
             // Uploaded logos are shrunk to fit the sidebar (max 400×100) and kept as a small PNG.
             const shrinkLogo = file => new Promise((res, rej) => {
@@ -1876,6 +1903,11 @@
                             const c = layout.custom.find(x => x.id === id);
                             let url = (v('url') || '').trim(); if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
                             if (c) { if (name) c.name = name; if (emoji) c.emoji = emoji; if (url) { c.url = url; t.url = url; if (frames[id]) { frames[id].remove(); delete frames[id]; } } }
+                            const par = v('parent');
+                            if (c && par !== undefined && par !== (c.parent || '')) {
+                                c.parent = par; t.parent = par || undefined;
+                                if (par) (layout.kids[par] = (layout.kids[par] || []).filter(x => x !== id)).push(id);
+                            }
                             ORIG[id] = { name: c ? c.name : t.name, emoji: c ? c.emoji : t.emoji, logo: null, logoLight: null };
                             delete L.name; delete L.emoji;
                         } else {
@@ -1914,6 +1946,8 @@
                     TOOLS.splice(TOOLS.indexOf(t), 1);
                     layout.custom = (layout.custom || []).filter(c => c.id !== id);
                     layout.off = (layout.off || []).filter(x => x !== id);
+                    (layout.custom || []).forEach(c => { if (c.parent === id) { c.parent = ''; TOOLS.find(x => x.id === c.id).parent = undefined; } });
+                    delete layout.kids[id];
                     if (frames[id]) { frames[id].remove(); delete frames[id]; }
                     commit();
                 }
@@ -1986,6 +2020,7 @@
                 const c = { id: 'c-' + Math.random().toString(36).slice(2, 8), name: name, url: url, emoji: back.querySelector('#tcEmoji').value.trim() || '🔗', parent: back.querySelector('#tcWhere').value || '', ext: back.querySelector('#tcExt').value === '1' };
                 layout.custom = (layout.custom || []).concat(c);
                 if (addIcon) layout.look[c.id] = Object.assign({}, layout.look[c.id], { icon: addIcon });
+                if (c.parent) { layout.kids = layout.kids || {}; (layout.kids[c.parent] = (layout.kids[c.parent] || []).filter(x => x !== c.id)).push(c.id); }
                 const nt = customTool(c); TOOLS.push(nt); applyLook(nt);
                 ['#tcName', '#tcUrl', '#tcEmoji'].forEach(sel => back.querySelector(sel).value = '');
                 addIcon = null; paintAddIcon();
@@ -2025,6 +2060,9 @@
             hubBox.addEventListener('click', e => { const b = e.target.closest('[data-clr]'); if (!b || b.closest('.unset')) return; setHub(b.closest('[data-color]').dataset.color, ''); paintHub(); });
             paintHub();
             paint();
+            // The Add form's "where" list (keeps the pick when tabs are added or renamed).
+            function paintWhere() { const w = back.querySelector('#tcWhere'), cur = w.value; w.innerHTML = whereOptions(null, cur); }
+            paintWhere();
         }
         document.getElementById('custTabsBtn').addEventListener('click', openTabCustomizer);
 
