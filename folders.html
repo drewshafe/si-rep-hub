@@ -73,6 +73,9 @@
   .optbar { display:none; gap:6px; margin-top:8px; padding-top:10px; border-top:1px dashed var(--line); align-items:center; }
   .optbar.on { display:flex; }
   .optbar .hint { font-size:11.5px; color:var(--muted); margin-right:auto; }
+  .roiadd { display:flex; gap:6px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line); }
+  .roiadd input { flex:1; min-width:0; border:1px solid var(--line); border-radius:8px; padding:6px 10px; background:var(--page); color:var(--ink); font-size:12.5px; }
+  .roiadd input:focus { outline:none; border-color:var(--accent); }
   .unfiled { margin-top:22px; }
   .unfiled h3 { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:8px; }
   .unfiled .sec { max-width:760px; }
@@ -169,6 +172,7 @@
 
   let user = null, folders = [], assets = [], scenarios = [], unfiled = [], openId = null;
   let picks = [];   // ROI scenario ids ticked for the options link, in pick order (= tab order)
+  let roiDraft = ''; // pasted ROI calc link not yet saved (survives re-renders)
 
   // ── data ──
   async function loadAll() {
@@ -229,10 +233,12 @@
       const rows = it[s.kind];
       return '<div class="sec" data-sec="' + s.kind + '"><h3>' + esc(s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') +
         (DOC_KINDS[s.kind] ? '<span class="docacts"><button class="btn small" type="button" data-act="upload" title="' + (MOCKUP_KINDS[s.kind] ? 'Upload an existing mockup (PDF or image)' : 'Upload an existing PDF or Word file') + '">⬆ Upload</button><button class="btn small" type="button" data-act="addlink" title="' + (MOCKUP_KINDS[s.kind] ? 'File a link to an existing mockup (e.g. Figma)' : 'File a link to an existing doc (e.g. Google Doc)') + '">🔗 Add link</button></span>' : '') + '</h3>' +
-        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (MOCKUP_KINDS[s.kind] ? 'save from the ' + esc(s.tool) + ' tab, or upload / link an existing mockup.' : DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : 'save from the ' + esc(s.tool) + ' tab.') + '</div>') +
+        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (MOCKUP_KINDS[s.kind] ? 'save from the ' + esc(s.tool) + ' tab, or upload / link an existing mockup.' : DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : (s.kind === 'roi' ? 'save from the ' + esc(s.tool) + ' tab, or paste a calc link below.' : 'save from the ' + esc(s.tool) + ' tab.')) + '</div>') +
         (s.kind === 'roi' && rows.length ? '<div class="optbar' + (picks.length ? ' on' : '') + '"><span class="hint">Tick scenarios in the order you want their tabs</span>' +
           '<button class="btn small primary" type="button" data-act="optcopy">📋 Copy ' + (picks.length > 1 ? 'options link (' + picks.length + ')' : 'link') + '</button>' +
-          '<button class="btn small" type="button" data-act="optopen" title="Open in a new window">↗</button></div>' : '') + '</div>';
+          '<button class="btn small" type="button" data-act="optopen" title="Open in a new window">↗</button></div>' : '') +
+        (s.kind === 'roi' ? '<div class="roiadd"><input class="roilink" type="url" placeholder="Paste an ROI calc link…" value="' + esc(roiDraft) + '" autocomplete="off">' +
+          '<button class="btn small primary" type="button" data-act="roisave">Save link</button></div>' : '') + '</div>';
     }).join('');
   }
   function rowHtml(s, r) {
@@ -261,7 +267,7 @@
   }
 
   function showList() { openId = null; $('detailView').hidden = true; $('listView').hidden = false; renderList(); }
-  function showFolder(id) { openId = id; picks = []; $('listView').hidden = true; $('unfiled').hidden = true; $('detailView').hidden = false; renderDetail(); scrollTo(0, 0); }
+  function showFolder(id) { openId = id; picks = []; roiDraft = ''; $('listView').hidden = true; $('unfiled').hidden = true; $('detailView').hidden = false; renderDetail(); scrollTo(0, 0); }
 
   function activate(f) {
     SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path });
@@ -299,6 +305,7 @@
     }
     if (b.dataset.act === 'optopen' && picks.length) { window.open(optLink(), '_blank', 'noopener'); return; }
     if (b.dataset.act === 'upload' || b.dataset.act === 'addlink') return addDoc(b.closest('[data-sec]').dataset.sec, b.dataset.act);
+    if (b.dataset.act === 'roisave') return saveRoiLink(b);
     const row = b.closest('.row'), kind = row.dataset.kind, id = row.dataset.id;
     if (b.dataset.act === 'pick') {
       const i = picks.indexOf(id);
@@ -340,6 +347,62 @@
       } catch (x) { toast('Couldn’t delete: ' + (x.message || x)); }
     }
   });
+
+  // ── Paste an ROI calc link into the folder ──
+  // Short cloud links (?id= / ?ids=) file the existing scenario(s); long param links become a new scenario.
+  $('sections').addEventListener('input', e => { if (e.target.classList.contains('roilink')) roiDraft = e.target.value; });
+  $('sections').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.classList.contains('roilink')) { e.preventDefault(); saveRoiLink(e.target.parentNode.querySelector('[data-act="roisave"]')); }
+  });
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  // Same naming as the calc's ☁ Cloud Save, so pasted scenarios read the same as tabs.
+  function roiLabel(p) {
+    if (p.get('rom') === '1') return 'No Protection (Returns)';
+    let s = 'Protection';
+    if (p.get('re') === '1') s += ' + Returns';
+    if (p.get('cbe') === '1') s += ' + Cashback';
+    return s;
+  }
+  async function fileScenario(id, f) {
+    if ([...scenarios, ...unfiled].some(x => x.id === id && x.merchant_ref === f.id)) return 'already';
+    const known = [...scenarios, ...unfiled].find(x => x.id === id);
+    // Unfiled (or unknown) → move it here. Already in another folder → copy, so that folder keeps it.
+    if (!known || !known.merchant_ref) {
+      try { await SIsb.linkScenario(id, f.id); return 'filed'; } catch (x) { /* not the owner → copy below */ }
+    }
+    const row = await SIsb.loadConfig(id);
+    await SIsb.saveConfig({ merchant: f.name, merchant_ref: f.id, kind: 'roi', title: row.title || roiLabel(new URLSearchParams((row.data || {}).q || '')), data: row.data || {} });
+    return 'copied';
+  }
+  async function saveRoiLink(btn) {
+    const f = folders.find(x => x.id === openId); if (!f || !btn) return;
+    const raw = (btn.parentNode.querySelector('.roilink').value || '').trim();
+    if (!raw) { toast('Paste an ROI calc link first'); return; }
+    let u;
+    try { u = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw); } catch (x) { toast('That doesn’t look like a link'); return; }
+    const p = u.searchParams;
+    const ids = (p.get('ids') || p.get('id') || '').split(',').map(x => x.trim()).filter(x => UUID.test(x));
+    const params = ['orders', 'aov', 'mname', 'claims', 'premium', 'template'].some(k => p.has(k));
+    if (!ids.length && !params) { toast('That isn’t an ROI calc link'); return; }
+    btn.disabled = true;
+    try {
+      let msg;
+      if (ids.length) {
+        const res = [];
+        for (const id of ids) res.push(await fileScenario(id, f));
+        const n = k => res.filter(r => r === k).length;
+        msg = res.every(r => r === 'already') ? 'Already in ' + f.name
+          : (ids.length > 1 ? (ids.length - n('already')) + ' scenarios saved to ' : 'Saved to ') + f.name + (n('copied') ? ' (copied)' : '');
+      } else {
+        // Long link → new scenario. Drop routing params; keep the calc params + hash (logo etc.).
+        ['id', 'ids', 't', 'opt'].forEach(k => p.delete(k));
+        await SIsb.saveConfig({ merchant: f.name, merchant_ref: f.id, kind: 'roi', title: roiLabel(p), data: { q: p.toString(), hash: u.hash || '' } });
+        msg = 'Saved to ' + f.name;
+      }
+      roiDraft = '';
+      await loadAll(); renderDetail(); toast(msg);
+    } catch (x) { btn.disabled = false; toast('Couldn’t save it: ' + (x.message || x)); }
+  }
 
   // File an existing Proposal / MSA / MNDA (PDF/Word) or Checkout / Email / Claim mockup (PDF/image) — upload or paste a link.
   const MAX_DOC = 25 * 1024 * 1024;
