@@ -203,6 +203,14 @@
         .tc-roi-row { padding:4px 8px; background:#fff; }
         .tc-roi-row button { width:24px; height:24px; }
         .tc-roi .tc-edit-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:4px; }
+        .tc-team { margin-top:16px; border-top:1px solid #eceef6; padding-top:14px; display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
+        .tc-team[hidden] { display:none; }
+        .tc-team .tc-h { font-weight:700; font-size:13px; display:flex; align-items:center; gap:8px; }
+        .tc-team .tc-sub { margin:0; }
+        .tc-team-meta { font-size:12px; color:#4a4f6e; font-weight:600; }
+        .tc-team .tc-publish { font:inherit; font-weight:700; border-radius:10px; padding:9px 16px; cursor:pointer; border:1px solid #4a5fc1; background:#4a5fc1; color:#fff; }
+        .tc-team .tc-publish:disabled { opacity:.6; cursor:default; }
+        .tc-team-ok { font-size:12.5px; color:#2e7d32; font-weight:600; }
         .tc-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
         .tc-actions button { font:inherit; font-weight:700; border-radius:8px; padding:9px 16px; cursor:pointer; border:1px solid #d8dbe8; background:#fff; color:#4a4f6e; }
         .tc-actions .tc-primary { background:#4a5fc1; border-color:#4a5fc1; color:#fff; }
@@ -815,7 +823,35 @@
         const LAYOUT_KEY = 'si_hub_layout';
         const DEFAULT_LAYOUT = () => ({ order: ['folders', 'roi', 'vault', 'preview', 'proposal', 'gorgias'], foldersSeeded: true, off: ['proposal', 'gorgias'], custom: [], look: {},
                                         kids: { preview: ['widget-designer', 'email-automation', 'claim-wizard'] } });
-        let layout = (() => { try { return Object.assign(DEFAULT_LAYOUT(), JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null') || {}); } catch (e) { return DEFAULT_LAYOUT(); } })();
+        // ── Team default: a hub admin's layout, published from ⚙ Customize tabs (Supabase hub_settings) ──
+        // Cached here. It's every rep's starting point, and whenever a newer one is published it
+        // replaces the rep's tabs; tabs a rep added for themselves are kept.
+        const TEAM_KEY = 'si_hub_team';
+        let team = (() => { try { return JSON.parse(localStorage.getItem(TEAM_KEY) || 'null'); } catch (e) { return null; } })();
+        const clone = o => JSON.parse(JSON.stringify(o));
+        // The team's tabs, order, sub tabs, looks and colors win; the rep's own custom tabs stay, with their look and on/off.
+        function withTeam(mine, t) {
+            const L = Object.assign(DEFAULT_LAYOUT(), clone(t.layout), { teamVersion: t.version, foldersSeeded: true });
+            L.look = L.look || {}; L.kids = L.kids || {};
+            const teamIds = new Set((L.custom || []).map(c => c.id));
+            const own = ((mine && mine.custom) || []).filter(c => !c.team && !teamIds.has(c.id)), ownIds = new Set(own.map(c => c.id));
+            L.custom = (L.custom || []).map(c => Object.assign(c, { team: true })).concat(own);
+            own.forEach(c => { if (((mine.look || {})[c.id])) L.look[c.id] = mine.look[c.id]; });
+            L.off = (L.off || []).concat(((mine && mine.off) || []).filter(id => ownIds.has(id)));
+            return L;
+        }
+        const baseLayout = () => team ? withTeam(null, team) : DEFAULT_LAYOUT();
+        let layout = (() => {
+            let mine = null;
+            try { mine = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null'); } catch (e) {}
+            if (!mine) return baseLayout();
+            if (team && (mine.teamVersion || 0) < team.version) {
+                const L = withTeam(mine, team);
+                try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(L)); } catch (e) {}
+                return L;
+            }
+            return Object.assign(DEFAULT_LAYOUT(), mine);
+        })();
         if (!layout.look) layout.look = {};
         // Reps who customized their tabs before Merchant Folders existed get it at the top once.
         if (!layout.foldersSeeded) {
@@ -830,12 +866,15 @@
         // installed app that claims the link ("Open supported links" → the app's own window).
         const openExternal = url => { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); };
         const customTool = c => ({ id: c.id, emoji: c.emoji || '🔗', name: c.name, url: c.url, parent: c.parent || undefined, custom: true, ext: !!c.ext });
-        (layout.custom || []).forEach(c => TOOLS.push(customTool(c)));
         // A custom tab can sit under any top-level tab; if that tab is gone (or is itself a sub tab), it's its own tab again.
-        (layout.custom || []).forEach(c => {
-            const p = c.parent && TOOLS.find(t => t.id === c.parent);
-            if (c.parent && (!p || p.parent || p.hidden)) { c.parent = ''; TOOLS.find(t => t.id === c.id).parent = undefined; }
-        });
+        function addCustomTools() {
+            (layout.custom || []).forEach(c => TOOLS.push(customTool(c)));
+            (layout.custom || []).forEach(c => {
+                const p = c.parent && TOOLS.find(t => t.id === c.parent);
+                if (c.parent && (!p || p.parent || p.hidden)) { c.parent = ''; TOOLS.find(t => t.id === c.id).parent = undefined; }
+            });
+        }
+        addCustomTools();
         // Tabs a custom tab can go under: every top-level tab except itself and ones that open outside the hub.
         const parentChoices = selfId => topTools().filter(t => !t.ext && t.id !== selfId);
         // Per-tab look (name, emoji, logo or text) — layout.look[id] = {name, emoji, mode:'logo'|'text', logo:dataURL}
@@ -1883,6 +1922,7 @@
                 '<p class="tc-sub">Reorder with ↑ ↓, switch tabs on or off, rename, re-logo, recolor or resize any tab with ✎ Edit, set sidebar &amp; window colors, or add your own. Saved for you in this browser.</p>' +
                 '<div class="tc-list" id="tcList"></div>' +
                 '<div class="tc-hub" id="tcHub"></div>' +
+                '<div class="tc-team" id="tcTeam" hidden></div>' +
                 '<div class="tc-add"><div class="tc-h">Add a tab</div>' +
                 '<div class="tc-iconpick"><input id="tcEmoji" maxlength="4" placeholder="🔗" aria-label="Icon"><button type="button" id="tcIconBtn" title="Upload an icon image instead of an emoji">⬆</button><input type="file" accept="image/*" id="tcIconFile" hidden></div><input id="tcName" placeholder="Tab name (e.g. Pricing sheet)" aria-label="Tab name">' +
                 '<input id="tcUrl" class="tc-full" placeholder="Link (https://…)" aria-label="Link">' +
@@ -2147,12 +2187,45 @@
                 commit();
             });
             back.querySelector('#tcReset').addEventListener('click', () => {
-                if (!confirm('Reset the sidebar to the default tabs? Your custom tabs will be removed.')) return;
-                TOOLS.filter(t => t.custom).forEach(t => { if (frames[t.id]) { frames[t.id].remove(); delete frames[t.id]; } TOOLS.splice(TOOLS.indexOf(t), 1); });
-                layout = DEFAULT_LAYOUT();
-                TOOLS.forEach(applyLook);
-                applyHubLook(); paintHub(); applyRoiLayout(repInputsEl);
-                commit();
+                if (!confirm(team ? 'Reset your sidebar to the team default? Tabs you added yourself will be removed.' : 'Reset the sidebar to the default tabs? Your custom tabs will be removed.')) return;
+                editing = null; roiEditing = false;
+                adoptLayout(baseLayout());
+                paintHub(); commit();
+            });
+            // ── Team default (hub admins only; Supabase enforces it, this only hides the box) ──
+            const teamBox = back.querySelector('#tcTeam');
+            const paintTeam = (note, err) => {
+                const when = team && team.at ? new Date(team.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+                teamBox.innerHTML = '<div class="tc-h">Team default <span class="tc-tag">Admin</span></div>' +
+                    '<p class="tc-sub">Publish your tabs as every rep’s layout: order, sub tabs, on/off, names, icons, logos, colors, sidebar &amp; window colors and your custom tabs. Reps get it the next time their Rep Hub opens signed in. Tabs a rep added for themselves are kept.</p>' +
+                    (team ? '<div class="tc-team-meta">Live for reps: version ' + team.version + (when ? ' · published ' + esc(when) : '') + '</div>' : '<div class="tc-team-meta">Nothing published yet; reps see the built-in tabs.</div>') +
+                    '<button type="button" class="tc-publish" id="tcPublish">Publish my tabs to all reps</button>' +
+                    (note ? '<div class="tc-team-ok">' + esc(note) + '</div>' : '') + (err ? '<div class="tc-err">' + esc(err) + '</div>' : '');
+            };
+            (async () => {
+                if (!window.SIsb) return;
+                try { const c = await SIsb.client(); const { data } = await c.rpc('hub_is_admin'); if (data === true && back.isConnected) { paintTeam(); teamBox.hidden = false; } } catch (e) {}
+            })();
+            teamBox.addEventListener('click', async e => {
+                const btn = e.target.closest('#tcPublish'); if (!btn) return;
+                if (!confirm('Replace every rep’s tabs with yours? Tabs they added for themselves stay.')) return;
+                btn.disabled = true; btn.textContent = 'Publishing…';
+                try {
+                    const pub = clone(layout);
+                    delete pub.teamVersion; delete pub.foldersSeeded;
+                    pub.custom = (pub.custom || []).map(c => { delete c.team; return c; });
+                    const c = await SIsb.client();
+                    const { data, error } = await c.from('hub_settings').upsert({ key: 'tab_layout', value: pub }, { onConflict: 'key' }).select('version, updated_at').single();
+                    if (error) throw error;
+                    team = { version: data.version, layout: pub, at: data.updated_at };
+                    try { localStorage.setItem(TEAM_KEY, JSON.stringify(team)); } catch (x) {}
+                    layout.teamVersion = data.version;
+                    (layout.custom || []).forEach(x => { x.team = true; });
+                    saveLayout();
+                    paintTeam('Published. Every rep gets these tabs the next time their Rep Hub opens.');
+                } catch (x) {
+                    paintTeam('', 'Couldn’t publish: ' + ((x && x.message) || x) + (/row-level security|permission/i.test((x && x.message) || '') ? ' (this account isn’t a hub admin).' : ''));
+                }
             });
             const close = () => { back.remove(); document.removeEventListener('keydown', onKey); };
             const onKey = e => { if (e.key === 'Escape') close(); };
@@ -2185,6 +2258,39 @@
             paintWhere();
         }
         document.getElementById('custTabsBtn').addEventListener('click', openTabCustomizer);
+
+        // Swap in a whole layout (a newer team default, or Reset) without reloading the page.
+        function adoptLayout(L) {
+            TOOLS.filter(t => t.custom).forEach(t => { TOOLS.splice(TOOLS.indexOf(t), 1); delete ORIG[t.id]; });
+            layout = L;
+            addCustomTools();
+            TOOLS.forEach(applyLook);
+            // Drop frames of tabs that are gone or now link somewhere else.
+            const was = activeId;
+            Object.keys(frames).forEach(id => {
+                const t = TOOLS.find(x => x.id === id);
+                if (!t || (t.custom && frames[id].getAttribute('src') !== t.url) || t.ext) { frames[id].remove(); delete frames[id]; }
+            });
+            saveLayout(); applyHubLook(); applyRoiLayout(repInputsEl);
+            if (was && !frames[was]) { activeId = null; renderNav(); if (TOOLS.some(t => t.id === was && !t.ext)) activate(was, false); else goDefault(false); }
+            else renderNav();
+            const cur = TOOLS.find(t => t.id === activeId);
+            if (cur) toolbarTitle.textContent = cur.emoji + ' ' + cur.name;
+        }
+        // Signed-in reps pick up the latest team default (on load, and when they sign in).
+        async function syncTeamLayout() {
+            try {
+                const c = await SIsb.client();
+                const { data } = await c.from('hub_settings').select('value, version, updated_at').eq('key', 'tab_layout').maybeSingle();
+                if (!data || !data.value) return;
+                team = { version: data.version, layout: data.value, at: data.updated_at };
+                try { localStorage.setItem(TEAM_KEY, JSON.stringify(team)); } catch (e) {}
+                if ((layout.teamVersion || 0) < team.version) adoptLayout(withTeam(layout, team));
+            } catch (e) {}
+        }
+        if (window.SIsb) SIsb.client().then(c => c.auth.onAuthStateChange(ev => {
+            if (ev === 'INITIAL_SESSION' || ev === 'SIGNED_IN') setTimeout(syncTeamLayout, 0);
+        })).catch(() => {});
 
         renderNav();
         const initial = location.hash.replace('#', '');
