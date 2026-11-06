@@ -653,12 +653,102 @@
            filled pill as an open tab (white label/logo via the white-label rule). */
         #nav-preview.expanded { background: rgba(22,24,74,0.55); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35); }
         body.pm #nav-preview.expanded { background:linear-gradient(150deg,#20212b,#0e0f16); box-shadow:none; }
+
+        /* ═══════════════ LIQUID GLASS (the default look; Project Midnight keeps its own) ═══════════════
+           Glass only on the functional layer, the chrome that floats over the wallpaper: the sidebar,
+           the toolbar, dialogs and the toast. The tool itself sits in a solid card (content layer).
+           Things placed ON glass use translucent fills, never more glass. The sidebar and toolbar get
+           their backplate from samasante/liquid-glass (module script at the end, .lg-plate); this CSS
+           frost is what shows until it loads, or if it can't. */
+        :root {
+            --lg-wall:
+                radial-gradient(55% 45% at 10% 14%, rgba(107,127,215,.95) 0%, rgba(107,127,215,0) 62%),
+                radial-gradient(42% 38% at 88% 8%, rgba(139,92,246,.75) 0%, rgba(139,92,246,0) 64%),
+                radial-gradient(50% 50% at 82% 92%, rgba(56,189,248,.50) 0%, rgba(56,189,248,0) 62%),
+                radial-gradient(46% 42% at 16% 96%, rgba(236,72,153,.42) 0%, rgba(236,72,153,0) 60%),
+                radial-gradient(30% 30% at 46% 52%, rgba(74,95,193,.55) 0%, rgba(74,95,193,0) 70%),
+                linear-gradient(160deg, #1d2163 0%, #2b3190 46%, #14173f 100%);
+            --lg-rim: inset 0 1px 0 rgba(255,255,255,.42), inset 0 0 0 1px rgba(255,255,255,.18);
+            --lg-lift: 0 18px 50px rgba(8,10,40,.34);
+            --lg-gap: 12px;
+        }
+        body:not(.pm) { background-color: #1b1f5c; background-image: var(--lg-wall); }
+        body:not(.pm) .layout { padding: var(--lg-gap); gap: var(--lg-gap); }
+        body:not(.pm) .sidebar, body:not(.pm) .toolbar {
+            background: rgba(255,255,255,.10);
+            -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
+            box-shadow: var(--lg-lift), var(--lg-rim);
+            position: relative;
+        }
+        body:not(.pm) .sidebar { border-radius: 26px; overflow: hidden; }
+        body:not(.pm) .sidebar.collapsed { margin-left: calc(-1 * var(--sidebar-width) - var(--lg-gap)); }
+        /* Library backplate mounted: it does the frost + tint + rim, so the panel itself goes clear. */
+        body:not(.pm) .lg-on { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+        .lg-plate { position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit; }
+        body.pm .lg-plate { display: none; }
+        body:not(.pm) .lg-on > :not(.lg-plate) { position: relative; z-index: 1; }
+        body:not(.pm) .logo-area { border-bottom-color: rgba(255,255,255,.14); }
+        body:not(.pm) .sidebar-footer { border-top-color: rgba(255,255,255,.14); }
+        body:not(.pm) .am-chip { border-radius: 16px; background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.22); }
+        body:not(.pm) .am-chip:hover { background: rgba(255,255,255,.18); }
+        body:not(.pm) .tabs-cust-btn { border-radius: 14px; border-color: rgba(255,255,255,.32); }
+        body:not(.pm) .rep-inputs { border-radius: 16px; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.16); }
+
+        /* Tabs: capsule fills on the glass; the open tab's fill is one pill that glides between tabs (.nav-sel). */
+        body:not(.pm) .nav { position: relative; }
+        body:not(.pm) .nav-item { border-radius: 16px; transition: background .2s, color .2s; }
+        body:not(.pm) .nav-item:hover { background: rgba(255,255,255,.10); }
+        body:not(.pm) .nav .nav-item.active { background: transparent; box-shadow: none; }
+        body:not(.pm) .nav.no-sel .nav-item.active { background: rgba(255,255,255,.22); box-shadow: var(--lg-rim); }
+        body:not(.pm) #nav-preview.expanded, body:not(.pm) .nav-item.nav-group.expanded, body:not(.pm) .nav-item.nav-parent.expanded:not(.active) { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+        body:not(.pm) .nav-sub { border-left-color: rgba(255,255,255,.14); }
+        .nav-sel { display: none; }
+        body:not(.pm) .nav-sel {
+            display: block; position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none;
+            border-radius: 16px; background: rgba(255,255,255,.22);
+            box-shadow: 0 8px 22px rgba(8,10,40,.22), var(--lg-rim);
+            transition: transform .5s cubic-bezier(.3,1.35,.5,1), width .35s ease, height .35s ease, opacity .2s;
+        }
+        body:not(.pm) .nav-sel.no-anim { transition: none; }
+
+        /* Toolbar: a glass capsule above the tool card; its buttons are fills on it. */
+        body:not(.pm) .main { background: transparent; gap: var(--lg-gap); }
+        body:not(.pm) .toolbar { border-radius: 20px; border-bottom: none; padding: 8px 10px 8px 12px; }
+        body:not(.pm) .toolbar-title { color: #fff; font-size: 0.98em; }
+        body:not(.pm) .toolbar .btn { border-radius: 999px; padding: 7px 14px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26); color: #fff; }
+        body:not(.pm) .toolbar .btn:hover { background: rgba(255,255,255,.26); }
+
+        /* The tool: a solid card (content layer). clip-path rounds it without touching its scrolling. */
+        body:not(.pm) .frame-wrap { background: #f4f5fb; border-radius: 22px; clip-path: inset(0 round 22px); box-shadow: var(--lg-lift); }
+
+        /* Dialogs + toast: frosted glass presentations. */
+        body:not(.pm) .tc-back { background: rgba(10,12,40,.30); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+        body:not(.pm) .tc-modal { background: rgba(255,255,255,.80); -webkit-backdrop-filter: blur(30px) saturate(1.7); backdrop-filter: blur(30px) saturate(1.7);
+            border-radius: 26px; box-shadow: 0 30px 80px rgba(8,10,40,.40), inset 0 1px 0 rgba(255,255,255,.9), inset 0 0 0 1px rgba(255,255,255,.55); }
+        body:not(.pm) .tc-row { background: rgba(255,255,255,.62); border-color: rgba(74,95,193,.14); border-radius: 14px; }
+        body:not(.pm) .tc-row.is-kid { background: rgba(255,255,255,.85); }
+        body:not(.pm) .copied-toast { background: rgba(28,30,80,.55); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); border-radius: 999px; box-shadow: var(--lg-lift), var(--lg-rim); }
+
+        @media (max-width: 760px) { :root { --lg-gap: 8px; } }
+        @media (prefers-reduced-motion: reduce) { body:not(.pm) .nav-sel { transition: transform .2s ease, width .2s ease, height .2s ease, opacity .2s; } }
+        @media (prefers-reduced-transparency: reduce) {
+            body:not(.pm) .sidebar, body:not(.pm) .toolbar, body:not(.pm) .lg-on { background: rgba(36,42,120,.94); }
+            body:not(.pm) .lg-plate { display: none; }
+            body:not(.pm) .tc-modal { background: #fff; }
+        }
     </style>
+    <script type="importmap">
+        { "imports": {
+            "react": "https://esm.sh/react@19.2.0",
+            "react/jsx-runtime": "https://esm.sh/react@19.2.0/jsx-runtime",
+            "react-dom/client": "https://esm.sh/react-dom@19.2.0/client?external=react"
+        } }
+    </script>
     <script src="https://drewshafe.github.io/si-roi-calculator/sb.js"></script>
 </head>
 <body>
     <div class="layout">
-        <nav class="sidebar" id="sidebar">
+        <nav class="sidebar" id="sidebar" data-glass="sidebar">
             <div class="logo-area">
                 <img class="logo-img" id="lockLogo" src="https://raw.githubusercontent.com/drewshafe/si-roi-calculator/main/si_lock.png" alt="ShipInsure" title="Reset to home">
                 <div>
@@ -669,7 +759,7 @@
             <button class="am-chip" id="amChip" type="button" title="Active merchant — every tool saves into this folder. Click to open Merchant Folders.">
                 <span class="am-logo" id="amLogo">📁</span><span class="am-text"><span class="am-label">Active merchant</span><span class="am-name" id="amName">None selected</span></span><span class="am-caret">›</span>
             </button>
-            <div class="nav" id="nav"></div>
+            <div class="nav no-sel" id="nav"></div>
             <div class="sidebar-footer">
                 <button class="tabs-cust-btn" id="custTabsBtn" type="button" title="Reorder, hide or add sidebar tabs">⚙ Customize tabs</button>
                 <span id="keyHint">Press 1–5 to switch tools</span>
@@ -680,7 +770,7 @@
             </div>
         </nav>
         <div class="main">
-            <div class="toolbar">
+            <div class="toolbar" data-glass="toolbar">
                 <button class="btn" id="toggleSidebar" title="Toggle sidebar">☰</button>
                 <div class="toolbar-title" id="toolbarTitle"></div>
                 <button class="btn" id="reloadBtn" title="Reload tool">⟳ Reload</button>
@@ -892,6 +982,7 @@
                 if (RENDERED.some(t => t.id === activeId)) paintNav(activeId);
                 else goDefault();
             }
+            placeSel(true);
         }
 
         // ── REP Inputs panel (mirrors the calc's ShipInsure Inputs, drives it live) ──
@@ -1562,6 +1653,7 @@
                 if (head) head.classList.toggle('expanded', open);
             }
             if (id === 'roi') { const rp = document.getElementById('repInputs'); if (rp) rp.classList.toggle('show'); }
+            trackSel();
         }
 
         function setGroupsForActive(id) {
@@ -1590,7 +1682,35 @@
                 }
             });
             setGroupsForActive(id);
+            trackSel();
         }
+
+        // Liquid Glass: the open tab's fill is one pill (.nav-sel) that glides to whichever tab is open.
+        // It follows the tab while groups open/close (their height animates), then settles.
+        function placeSel(instant) {
+            let sel = nav.querySelector(':scope > .nav-sel');
+            if (!sel) { sel = document.createElement('div'); sel.className = 'nav-sel no-anim'; nav.prepend(sel); instant = true; }
+            nav.classList.remove('no-sel');
+            const a = nav.querySelector('.nav-item.active');
+            if (!a || !a.offsetHeight) { sel.style.opacity = 0; return; }
+            const nr = nav.getBoundingClientRect(), r = a.getBoundingClientRect();
+            if (instant) sel.classList.add('no-anim');
+            sel.style.width = r.width + 'px'; sel.style.height = r.height + 'px';
+            sel.style.transform = 'translate(' + (r.left - nr.left + nav.scrollLeft) + 'px,' + (r.top - nr.top + nav.scrollTop) + 'px)';
+            sel.style.opacity = 1;
+            if (instant) { void sel.offsetWidth; sel.classList.remove('no-anim'); }
+        }
+        let _selT = 0;
+        function trackSel() {
+            const end = performance.now() + 420, first = !_selT;
+            if (_selT) cancelAnimationFrame(_selT);
+            placeSel(first);
+            const step = () => { if (performance.now() > end) { _selT = 0; return; } placeSel(true); _selT = requestAnimationFrame(step); };
+            // Let the pill's own glide run first, then follow any group that's still opening.
+            _selT = requestAnimationFrame(() => { _selT = requestAnimationFrame(step); });
+        }
+        nav.addEventListener('transitionend', e => { if (e.target.classList && e.target.classList.contains('nav-sub')) placeSel(true); });
+        window.addEventListener('resize', () => placeSel(true));
 
         function _pmActive() { return document.body.classList.contains('pm'); }
         function _withTheme(url) { return _pmActive() ? url + (url.includes('?') ? '&' : '?') + 'theme=midnight' : url; }
@@ -2133,6 +2253,31 @@
             if (cb) cb.checked = on;
             document.body.classList.toggle('pm', on);
         })();
+    </script>
+    <script type="module">
+        // Liquid glass backplates from samasante/liquid-glass (React, loaded from esm.sh). Each
+        // [data-glass] panel gets a <Glass> material behind its content: it frosts, tints and
+        // edge-lights the wallpaper, and in Chrome / Edge also bends it at the rim. Nothing here
+        // is required: if it can't load, the panel keeps its CSS frost.
+        import { createElement as h } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { Glass } from 'https://esm.sh/*@samasante/liquid-glass@0.1.1';
+        // Tall/wide panels: no centre dome (it would bloom an oval), just the liquid rim + sheen.
+        const LOOK = {
+            sidebar: { radius: 26, optics: { curvature: 0, depth: 0.35, bend: 0.55, bendWidth: 0.09, dispersion: 0.4, frost: 18, saturate: 1.6, sheen: 0.45, sheenWidth: 3 } },
+            toolbar: { radius: 20, optics: { curvature: 0.15, bend: 0.5, bendWidth: 0.3, dispersion: 0.35, frost: 18, saturate: 1.6, sheen: 0.4 } },
+        };
+        document.querySelectorAll('[data-glass]').forEach(panel => {
+            const look = LOOK[panel.dataset.glass]; if (!look) return;
+            const plate = document.createElement('div');
+            plate.className = 'lg-plate';
+            panel.prepend(plate);
+            createRoot(plate).render(h(Glass, {
+                radius: look.radius, optics: look.optics,
+                style: { position: 'absolute', inset: 0, borderRadius: look.radius, background: 'rgba(255,255,255,0.10)' },
+            }, ''));
+            panel.classList.add('lg-on');
+        });
     </script>
 </body>
 </html>
