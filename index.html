@@ -2197,7 +2197,7 @@
             const paintTeam = (note, err) => {
                 const when = team && team.at ? new Date(team.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
                 teamBox.innerHTML = '<div class="tc-h">Team default <span class="tc-tag">Admin</span></div>' +
-                    '<p class="tc-sub">Publish your tabs as every rep’s layout: order, sub tabs, on/off, names, icons, logos, colors, sidebar &amp; window colors and your custom tabs. Reps get it the next time their Rep Hub opens signed in. Tabs a rep added for themselves are kept.</p>' +
+                    '<p class="tc-sub">Publish your tabs as every rep’s layout: order, sub tabs, on/off, names, icons, logos, colors, sidebar &amp; window colors and your custom tabs. Reps get it the next time their Rep Hub opens. Tabs a rep added for themselves are kept.</p>' +
                     (team ? '<div class="tc-team-meta">Live for reps: version ' + team.version + (when ? ' · published ' + esc(when) : '') + '</div>' : '<div class="tc-team-meta">Nothing published yet; reps see the built-in tabs.</div>') +
                     '<button type="button" class="tc-publish" id="tcPublish">Publish my tabs to all reps</button>' +
                     (note ? '<div class="tc-team-ok">' + esc(note) + '</div>' : '') + (err ? '<div class="tc-err">' + esc(err) + '</div>' : '');
@@ -2277,11 +2277,13 @@
             const cur = TOOLS.find(t => t.id === activeId);
             if (cur) toolbarTitle.textContent = cur.emoji + ' ' + cur.name;
         }
-        // Signed-in reps pick up the latest team default (on load, and when they sign in).
+        // Every rep picks up the latest team default on load, signed in or not (hub_team_layout() is
+        // readable without signing in; the table read is the fallback for databases without it).
         async function syncTeamLayout() {
             try {
                 const c = await SIsb.client();
-                const { data } = await c.from('hub_settings').select('value, version, updated_at').eq('key', 'tab_layout').maybeSingle();
+                let { data, error } = await c.rpc('hub_team_layout');
+                if (error) ({ data } = await c.from('hub_settings').select('value, version, updated_at').eq('key', 'tab_layout').maybeSingle());
                 if (!data || !data.value) return;
                 team = { version: data.version, layout: data.value, at: data.updated_at };
                 try { localStorage.setItem(TEAM_KEY, JSON.stringify(team)); } catch (e) {}

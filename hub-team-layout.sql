@@ -13,8 +13,8 @@
 --
 -- Security model
 --   • Signed-in reps (signups are disabled, so every user is ShipInsure staff) can read it.
---   • Only hub admins can create or change it. Anonymous visitors can't read it (custom tabs can
---     link to internal sheets).
+--   • Only hub admins can create or change it. Signed-out visitors can read just the published tab
+--     layout, through hub_team_layout() (section 3), never the table itself.
 -- ────────────────────────────────────────────────────────────────────────────
 
 -- 1) ADMINS
@@ -73,5 +73,21 @@ create policy hub_settings_team_read    on public.hub_settings for select to aut
 create policy hub_settings_admin_insert on public.hub_settings for insert to authenticated with check (public.hub_is_admin());
 create policy hub_settings_admin_update on public.hub_settings for update to authenticated using (public.hub_is_admin()) with check (public.hub_is_admin());
 
--- 3) ADD AN ADMIN (the email they sign in to the Rep Hub with), then run just this line:
+-- 3) TEAM LAYOUT FOR EVERYONE — the published tab layout only (no other settings), readable without
+--    signing in, so a rep who isn't signed in still gets the team's tabs. The Rep Hub page itself is
+--    public, so its tab list isn't secret; the tools behind the tabs keep their own sign-in.
+create or replace function public.hub_team_layout()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object('value', value, 'version', version, 'updated_at', updated_at)
+  from public.hub_settings where key = 'tab_layout';
+$$;
+revoke all on function public.hub_team_layout() from public;
+grant execute on function public.hub_team_layout() to anon, authenticated;
+
+-- 4) ADD AN ADMIN (the email they sign in to the Rep Hub with), then run just this line:
 -- insert into public.hub_admins (email) values ('you@shipinsure.io') on conflict do nothing;
