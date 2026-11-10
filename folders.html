@@ -136,6 +136,11 @@
   .bstyle { display:grid; grid-template-columns:auto 1fr; gap:7px 10px; align-items:center; margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--page); font-size:12px; }
   .bstyle label { font-weight:700; color:var(--muted); }
   .bstyle .brow { display:flex; align-items:center; gap:6px; }
+  .sec h3 .bico { width:18px; height:18px; object-fit:contain; border-radius:4px; flex:0 0 auto; }
+  .bstyle .icobox { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .bstyle .icobox input[data-bf=emoji] { width:90px; flex:0 0 auto; }
+  .bstyle .icobox .or { color:var(--muted); font-weight:600; }
+  .bstyle .icobox .ico-prev { width:26px; height:26px; object-fit:contain; border:1px solid var(--line); border-radius:6px; background:#fff; padding:1px; }
   .bstyle input[type=text], .bstyle select { border:1px solid var(--line); border-radius:7px; padding:5px 8px; background:var(--card); color:var(--ink); min-width:0; width:100%; }
   .lnks { display:flex; flex-wrap:wrap; gap:8px; }
   .lnk { display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:10px; border:1px solid var(--line); background:var(--page); color:var(--ink); font-weight:600; font-size:13px; text-decoration:none; max-width:100%; }
@@ -288,7 +293,7 @@
   // One built-in section's content (its saves, upload / link buttons, ROI tools).
   function sectionInner(s, it, b) {
       const rows = it[s.kind];
-      return '<h3>' + (b.emoji ? esc(b.emoji) + ' ' : '') + esc(b.title || s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') +
+      return '<h3>' + (b.icon || b.emoji ? iconOf(b) + ' ' : '') + esc(b.title || s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') +
         (DOC_KINDS[s.kind] ? '<span class="docacts"><button class="btn small" type="button" data-act="upload" title="' + (MOCKUP_KINDS[s.kind] ? 'Upload an existing mockup (PDF or image)' : 'Upload an existing PDF or Word file') + '">⬆ Upload</button><button class="btn small" type="button" data-act="addlink" title="' + (MOCKUP_KINDS[s.kind] ? 'File a link to an existing mockup (e.g. Figma)' : 'File a link to an existing doc (e.g. Google Doc)') + '">🔗 Add link</button></span>' : '') + '</h3>' +
         (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (MOCKUP_KINDS[s.kind] ? 'save from the ' + esc(s.tool) + ' tab, or upload / link an existing mockup.' : DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : (s.kind === 'roi' ? 'save from the ' + esc(s.tool) + ' tab, or paste a calc link below.' : 'save from the ' + esc(s.tool) + ' tab.')) + '</div>') +
         (s.kind === 'roi' && rows.length ? '<div class="optbar' + (picks.length ? ' on' : '') + '"><span class="hint">Tick scenarios in the order you want their tabs</span>' +
@@ -434,14 +439,18 @@
     const color = (f, v, d) => '<span class="brow"><input type="color" data-bf="' + f + '" value="' + esc(v || d) + '"><button class="btn small ghost" type="button" data-bact="clr" data-f="' + f + '">' + (v ? 'Default' : 'Default ✓') + '</button></span>';
     return '<div class="bstyle">' +
       '<label>Title</label><input type="text" data-bf="title" value="' + esc(b.title || '') + '" placeholder="' + esc(s ? s.label : TYPE_LABEL[b.type]) + '">' +
-      '<label>Icon</label><input type="text" data-bf="emoji" maxlength="4" value="' + esc(b.emoji || '') + '" placeholder="emoji (optional)">' +
+      '<label>Icon</label><span class="icobox"><input type="text" data-bf="emoji" maxlength="4" value="' + esc(b.emoji || '') + '" placeholder="' + (b.icon ? '✕' : 'emoji') + '" title="Typing an emoji replaces an uploaded icon"><span class="or">or</span>' +
+        (b.icon ? '<img class="ico-prev" src="' + esc(b.icon) + '" alt="">' : '') +
+        '<button class="btn small" type="button" data-bact="iup" title="Upload an icon image instead of an emoji">⬆ Upload icon</button>' +
+        (b.icon ? '<button class="btn small ghost" type="button" data-bact="iclr">Use emoji</button>' : '') +
+        '<input type="file" accept="image/*" data-bfile hidden></span>' +
       '<label>Background</label>' + color('bg', b.bg, '#ffffff') +
       '<label>Title color</label>' + color('ink', b.ink, '#6b7090') +
       (b.type === 'embed' ? '<label>Height</label><select data-bf="h">' + [[240, 'Short'], [380, 'Medium'], [560, 'Tall'], [760, 'Extra tall']].map(([v, l]) => '<option value="' + v + '"' + ((b.h || 380) === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' : '') +
       '</div>';
   }
   function customInner(b) {
-    const head = '<h3>' + esc(b.emoji || TYPE_EMOJI[b.type]) + ' ' + esc(b.title || TYPE_LABEL[b.type]) + '</h3>';
+    const head = '<h3>' + iconOf(b, TYPE_EMOJI[b.type]) + ' ' + esc(b.title || TYPE_LABEL[b.type]) + '</h3>';
     if (b.type === 'links') {
       const links = b.links || [];
       if (editing) return head + links.map((l, i) => '<div class="lnk-ed" data-i="' + i + '"><input data-lf="label" value="' + esc(l.label || '') + '" placeholder="Label (e.g. Shared Drive)"><input data-lf="url" value="' + esc(l.url || '') + '" placeholder="https://…"><button class="btn small ghost" type="button" data-bact="lnkdel" title="Remove">✕</button></div>').join('') +
@@ -470,6 +479,19 @@
     return l > 0.55 ? '--ink:#1d2240;--muted:#6b7090;--line:#e3e5f2;--page:rgba(255,255,255,.65);color:#1d2240;'
       : '--ink:#f4f5fb;--muted:#c3c7e4;--line:rgba(255,255,255,.18);--page:rgba(255,255,255,.08);color:#f4f5fb;';
   }
+  // A block's icon: an uploaded image wins over the emoji (the two are alternatives).
+  const iconOf = (b, fallback) => b.icon ? '<img class="bico" src="' + esc(b.icon) + '" alt="">' : esc(b.emoji || fallback || '');
+  // Uploaded icons are squared to fit 64×64 (transparent padding) and kept as a small PNG — same as the Rep Hub's custom tabs.
+  const shrinkIcon = file => new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onerror = rej;
+    fr.onload = () => { const im = new Image(); im.onerror = rej; im.onload = () => {
+      const k = Math.min(64 / im.naturalWidth, 64 / im.naturalHeight), c = document.createElement('canvas'); c.width = c.height = 64;
+      const w = im.naturalWidth * k, h = im.naturalHeight * k;
+      c.getContext('2d').drawImage(im, (64 - w) / 2, (64 - h) / 2, w, h); res(c.toDataURL('image/png'));
+    }; im.src = fr.result; };
+    fr.readAsDataURL(file);
+  });
   const blockOf = el => { const n = el && el.closest('[data-bid]'); return n && cur.blocks.find(b => b.id === n.dataset.bid); };
 
   // Editbar: add blocks, header colors, default / reset / done.
@@ -525,11 +547,20 @@
     else if (act === 'hide') b.hidden = !b.hidden;
     else if (act === 'del') { if (!confirm('Delete this ' + (TYPE_LABEL[b.type] || '').toLowerCase() + ' block?')) return; cur.blocks = cur.blocks.filter(x => x !== b); }
     else if (act === 'clr') delete b[btn.dataset.f];
+    else if (act === 'iup') { const f = btn.parentNode.querySelector('[data-bfile]'); if (f) f.click(); return; }
+    else if (act === 'iclr') delete b.icon;
     else if (act === 'lnkadd') (b.links = b.links || []).push({ label: '', url: '' });
     else if (act === 'lnkdel') b.links.splice(+btn.closest('[data-i]').dataset.i, 1);
     else return;
     renderDetail(); if (act !== 'style') queueSave();
     if (act === 'lnkadd') { const ins = $('sections').querySelectorAll('[data-bid="' + b.id + '"] .lnk-ed input'); if (ins.length) ins[ins.length - 2].focus(); }
+  });
+  $('sections').addEventListener('change', async e => {
+    const t = e.target; if (!editing || !t.matches('[data-bfile]')) return;
+    const b = blockOf(t), file = t.files && t.files[0]; t.value = '';
+    if (!b || !file) return;
+    try { b.icon = await shrinkIcon(file); } catch (x) { alert('Could not read that image.'); return; }
+    renderDetail(); queueSave();
   });
   $('sections').addEventListener('input', e => {
     if (!editing) return;
@@ -538,6 +569,10 @@
     else if (t.dataset.bf) {
       const f = t.dataset.bf;
       b[f] = f === 'h' ? +t.value : t.value;
+      if (f === 'emoji' && b.icon && t.value) {   // an emoji replaces an uploaded icon
+        delete b.icon; const pos = t.selectionStart; renderDetail();
+        const n = $('sections').querySelector('[data-bid="' + b.id + '"] [data-bf="emoji"]'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (x) {} }
+      }
       if (f === 'bg' || f === 'ink') { const el = t.closest('[data-bid]'); if (f === 'bg') el.style.cssText = 'background:' + t.value + ';' + inksFor(t.value) + (b.ink ? '--blk-ink:' + b.ink + ';' : ''); else el.style.setProperty('--blk-ink', t.value); const d = t.parentNode.querySelector('[data-bact="clr"]'); if (d) d.textContent = 'Default'; }
       if (f === 'h' || f === 'url') { clearTimeout(e.target._r); e.target._r = setTimeout(() => { const pos = t.selectionStart; renderDetail(); const n = $('sections').querySelector('[data-bid="' + b.id + '"] [data-bf="' + f + '"]'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (x) {} } }, 700); }
     } else return;
