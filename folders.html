@@ -102,6 +102,51 @@
   body.pm .logo img { background:#1a1a20; }
 
   @media (max-width:640px) { .wrap { padding:16px 14px 50px; } .sections { grid-template-columns:1fr; } }
+
+  /* ── 🎨 Customize: an Aligned-style layout per folder ──
+     The sections are blocks on a 6-column grid: ⅓ = 2, ½ = 3, ⅔ = 4, Full = 6 columns. */
+  .sections { grid-template-columns:repeat(6, minmax(0, 1fr)); }
+  .blk { grid-column:span 2; position:relative; min-width:0; }
+  .blk.w3 { grid-column:span 3; } .blk.w4 { grid-column:span 4; } .blk.w6 { grid-column:span 6; }
+  .blk h3 { color:var(--blk-ink, var(--muted)); }
+  .dhead.inked a, .dhead.inked .fsub { color:inherit; opacity:.85; }
+  @media (max-width:980px) { .blk, .blk.w3, .blk.w4 { grid-column:span 3; } }
+  @media (max-width:640px) { .sections { grid-template-columns:repeat(6, minmax(0, 1fr)); } .blk, .blk.w3, .blk.w4, .blk.w6 { grid-column:span 6; } }
+  .editing .blk { outline:1.5px dashed #c3c8ef; outline-offset:3px; }
+  .editing .blk.is-hidden { opacity:.45; }
+  .blk.dragging { opacity:.45; outline-style:solid; outline-color:var(--accent); }
+  .btools { display:none; position:absolute; top:-14px; right:12px; z-index:3; align-items:center; gap:2px; padding:2px 5px; background:var(--card); border:1px solid var(--line); border-radius:999px; box-shadow:0 4px 14px rgba(30,40,90,.13); }
+  .editing .btools { display:flex; }
+  .btools button { border:0; background:none; color:var(--ink); min-width:24px; height:24px; padding:0 5px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; }
+  .btools button:hover { background:var(--accent-soft); }
+  .btools button.on { background:var(--accent); color:#fff; }
+  .btools .bdrag { cursor:grab; font-size:14px; touch-action:none; }
+  .btools .sep { width:1px; height:14px; background:var(--line); margin:0 3px; }
+  .bresize { display:none; position:absolute; top:14px; bottom:14px; right:-8px; width:12px; cursor:ew-resize; touch-action:none; z-index:2; }
+  .editing .bresize { display:block; }
+  .bresize::after { content:''; position:absolute; left:4px; top:50%; height:36px; margin-top:-18px; width:4px; border-radius:2px; background:#b9bfe8; }
+  .bresize:hover::after { background:var(--accent); }
+  .editbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--card); border:1px solid var(--accent); border-radius:14px; padding:10px 12px; margin:-4px 0 22px; position:sticky; top:8px; z-index:5; box-shadow:0 8px 24px rgba(30,40,90,.10); }
+  .editbar .etitle { font-weight:800; }
+  .editbar .ehint { font-size:11.5px; color:var(--muted); flex:1 1 220px; }
+  .editbar .ehead { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--muted); font-weight:600; }
+  .editbar input[type=color], .bstyle input[type=color] { width:30px; height:26px; padding:1px; border:1px solid var(--line); border-radius:6px; background:var(--card); cursor:pointer; }
+  .editbar .lstatus { font-size:11.5px; color:var(--ok); font-weight:600; flex-basis:100%; }
+  .editbar .lstatus.warn { color:var(--danger); }
+  .bstyle { display:grid; grid-template-columns:auto 1fr; gap:7px 10px; align-items:center; margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--page); font-size:12px; }
+  .bstyle label { font-weight:700; color:var(--muted); }
+  .bstyle .brow { display:flex; align-items:center; gap:6px; }
+  .bstyle input[type=text], .bstyle select { border:1px solid var(--line); border-radius:7px; padding:5px 8px; background:var(--card); color:var(--ink); min-width:0; width:100%; }
+  .lnks { display:flex; flex-wrap:wrap; gap:8px; }
+  .lnk { display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:10px; border:1px solid var(--line); background:var(--page); color:var(--ink); font-weight:600; font-size:13px; text-decoration:none; max-width:100%; }
+  .lnk span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lnk:hover { border-color:var(--accent); color:var(--accent); }
+  .lnk-ed { display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr) auto; gap:6px; margin-bottom:6px; }
+  .lnk-ed input, .bfield { border:1px solid var(--line); border-radius:7px; padding:6px 9px; background:var(--page); color:var(--ink); font-size:12.5px; min-width:0; width:100%; }
+  .btext { white-space:pre-wrap; line-height:1.55; font-size:13.5px; }
+  .btext a { color:var(--accent); }
+  textarea.bfield { min-height:110px; resize:vertical; font:inherit; font-size:13px; line-height:1.5; }
+  .bembed { width:100%; border:0; border-radius:10px; background:var(--page); display:block; }
 </style>
 </head>
 <body>
@@ -129,6 +174,7 @@
   <div id="detailView" hidden>
     <button class="back" id="backBtn" type="button">← All folders</button>
     <div class="dhead" id="dhead"></div>
+    <div id="editbar"></div>
     <div class="sections" id="sections"></div>
   </div>
 </div>
@@ -226,20 +272,27 @@
     $('dhead').innerHTML = logoHtml(f) +
       '<div class="dtitle"><h2>' + esc(f.name) + '</h2>' + (site ? '<a href="' + esc(site) + '" target="_blank" rel="noopener">' + esc(f.domain) + ' ↗</a>' : '<span class="fsub">No store URL</span>') + '</div>' +
       (isActive ? '<button class="btn" type="button" disabled>✓ Active merchant</button>' : '<button class="btn primary" type="button" data-act="activate">Set as active merchant</button>') +
-      '<button class="btn" type="button" data-act="edit">✎ Edit</button>' +
+      '<button class="btn" type="button" data-act="edit">✎ Edit details</button>' +
+      '<button class="btn' + (editing ? ' primary' : '') + '" type="button" data-act="customize">' + (editing ? '✓ Done customizing' : '🎨 Customize') + '</button>' +
       '<button class="btn ' + (f.archived ? '' : 'danger') + '" type="button" data-act="archive">' + (f.archived ? 'Restore' : 'Archive') + '</button>';
     const it = itemsFor(f.id);
-    $('sections').innerHTML = SECTIONS.map(s => {
+    if (!editing || curFor !== f.id || !cur) { cur = layoutOf(f.id); curFor = f.id; }
+    $('dhead').style.background = cur.head.bg || ''; $('dhead').style.color = cur.head.ink || ''; $('dhead').classList.toggle('inked', !!cur.head.ink);
+    $('detailView').classList.toggle('editing', editing);
+    $('editbar').innerHTML = editing ? editbarHtml() : '';
+    $('sections').innerHTML = cur.blocks.map(b => blockHtml(b, it)).join('');
+  }
+  // One built-in section's content (its saves, upload / link buttons, ROI tools).
+  function sectionInner(s, it, b) {
       const rows = it[s.kind];
-      return '<div class="sec" data-sec="' + s.kind + '"><h3>' + esc(s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') +
+      return '<h3>' + (b.emoji ? esc(b.emoji) + ' ' : '') + esc(b.title || s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') +
         (DOC_KINDS[s.kind] ? '<span class="docacts"><button class="btn small" type="button" data-act="upload" title="' + (MOCKUP_KINDS[s.kind] ? 'Upload an existing mockup (PDF or image)' : 'Upload an existing PDF or Word file') + '">⬆ Upload</button><button class="btn small" type="button" data-act="addlink" title="' + (MOCKUP_KINDS[s.kind] ? 'File a link to an existing mockup (e.g. Figma)' : 'File a link to an existing doc (e.g. Google Doc)') + '">🔗 Add link</button></span>' : '') + '</h3>' +
         (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (MOCKUP_KINDS[s.kind] ? 'save from the ' + esc(s.tool) + ' tab, or upload / link an existing mockup.' : DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : (s.kind === 'roi' ? 'save from the ' + esc(s.tool) + ' tab, or paste a calc link below.' : 'save from the ' + esc(s.tool) + ' tab.')) + '</div>') +
         (s.kind === 'roi' && rows.length ? '<div class="optbar' + (picks.length ? ' on' : '') + '"><span class="hint">Tick scenarios in the order you want their tabs</span>' +
           '<button class="btn small primary" type="button" data-act="optcopy">📋 Copy ' + (picks.length > 1 ? 'options link (' + picks.length + ')' : 'link') + '</button>' +
           '<button class="btn small" type="button" data-act="optopen" title="Open in a new window">↗</button></div>' : '') +
         (s.kind === 'roi' ? '<div class="roiadd"><input class="roilink" type="url" placeholder="Paste an ROI calc link…" value="' + esc(roiDraft) + '" autocomplete="off">' +
-          '<button class="btn small primary" type="button" data-act="roisave">Save link</button></div>' : '') + '</div>';
-    }).join('');
+          '<button class="btn small primary" type="button" data-act="roisave">Save link</button></div>' : '');
   }
   function rowHtml(s, r) {
     if (s.kind === 'roi') {
@@ -266,8 +319,268 @@
       '<button class="btn small ghost" type="button" data-act="del" title="Delete this save">✕</button></div>';
   }
 
-  function showList() { openId = null; $('detailView').hidden = true; $('listView').hidden = false; renderList(); }
-  function showFolder(id) { openId = id; picks = []; roiDraft = ''; $('listView').hidden = true; $('unfiled').hidden = true; $('detailView').hidden = false; renderDetail(); scrollTo(0, 0); }
+  // ── 🎨 Customize: an Aligned-style layout per folder ──
+  // layout = { v:1, head:{bg,ink}, blocks:[{ id, type:'section'|'links'|'text'|'embed', w:2|3|4|6, hidden,
+  //   title, emoji, bg, ink, links:[{label,url}], text, url, h }] }
+  // A folder's layout is saved on the folder (merchants.layout), so the whole team sees it. Folders
+  // without one use the default: yours ("Use as default"), else the team's (published by a hub admin),
+  // else the built-in grid. Block ids: a section's kind, or b-xxxxxx for custom blocks.
+  const WIDTHS = [[2, '⅓'], [3, '½'], [4, '⅔'], [6, 'Full']];
+  const TYPE_LABEL = { links: 'Links', text: 'Notes', embed: 'Embed' };
+  const TYPE_EMOJI = { links: '🔗', text: '📝', embed: '🎬' };
+  const BUILTIN = () => ({ v: 1, head: {}, blocks: SECTIONS.map(s => ({ id: s.kind, type: 'section', w: 2 })) });
+  const MY_DEFAULT_KEY = 'si_folder_layout_default';
+  const clone = o => JSON.parse(JSON.stringify(o));
+  let teamDefault = null, isAdmin = false, layoutCol = true;
+  const folderLayouts = {};               // folder id → its saved layout (null = none saved)
+  let editing = false, styling = null, cur = null, curFor = null, saveT = 0, lstatus = ['', false];
+  const myDefault = () => { try { return JSON.parse(localStorage.getItem(MY_DEFAULT_KEY) || 'null'); } catch (e) { return null; } };
+  const localLayout = id => { try { return JSON.parse(localStorage.getItem('si_folder_layout_' + id) || 'null'); } catch (e) { return null; } };
+  // Every built-in section appears exactly once (new ones join at the end); custom blocks keep their content.
+  function normalize(L) {
+    L = clone(L && Array.isArray(L.blocks) ? L : BUILTIN());
+    L.v = 1; L.head = L.head || {};
+    const kinds = new Set(SECTIONS.map(s => s.kind)), seen = new Set();
+    L.blocks = L.blocks.filter(b => b && b.id && !seen.has(b.id) && seen.add(b.id) && (b.type === 'section' ? kinds.has(b.id) : TYPE_LABEL[b.type]));
+    SECTIONS.forEach(s => { if (!seen.has(s.kind)) L.blocks.push({ id: s.kind, type: 'section', w: 2 }); });
+    L.blocks.forEach(b => { if (![2, 3, 4, 6].includes(b.w)) b.w = b.type === 'section' ? 2 : 3; });
+    return L;
+  }
+  const layoutOf = id => normalize(folderLayouts[id] || myDefault() || teamDefault);
+  async function loadLayout(id) {
+    if (id in folderLayouts) return;
+    if (layoutCol) {
+      try {
+        const c = await SIsb.client();
+        const { data, error } = await c.from('merchants').select('layout').eq('id', id).single();
+        if (error) throw error;
+        folderLayouts[id] = data.layout || null; return;
+      } catch (x) { if (x.code === '42703' || /layout/i.test(x.message || '')) layoutCol = false; }
+    }
+    folderLayouts[id] = localLayout(id);
+  }
+  function setStatus(msg, warn) { lstatus = [msg, !!warn]; const el = document.querySelector('.editbar .lstatus'); if (el) { el.textContent = msg; el.classList.toggle('warn', !!warn); } }
+  function queueSave() { clearTimeout(saveT); setStatus('Saving…'); saveT = setTimeout(saveLayout, 450); }
+  async function saveLayout(value) {
+    const id = curFor; if (!id) return;
+    const L = value === undefined ? clone(cur) : value;
+    folderLayouts[id] = L;
+    if (layoutCol) {
+      try {
+        const c = await SIsb.client();
+        const { error } = await c.from('merchants').update({ layout: L }).eq('id', id);
+        if (error) throw error;
+        setStatus(L ? 'Saved ✓ · everyone on the team sees this layout' : 'This folder uses the default layout again'); return;
+      } catch (x) {
+        if (x.code === '42703' || /layout/i.test(x.message || '')) layoutCol = false;
+        else { setStatus('Couldn’t save: ' + (x.message || x), true); return; }
+      }
+    }
+    try { L ? localStorage.setItem('si_folder_layout_' + id, JSON.stringify(L)) : localStorage.removeItem('si_folder_layout_' + id); } catch (e) {}
+    setStatus('Saved in this browser only. Run folder-layouts.sql in Supabase to share folder layouts with the team.', true);
+  }
+  // Pull the team default + admin flag once signed in.
+  async function loadLayoutSettings() {
+    try {
+      const c = await SIsb.client();
+      const [td, adm] = await Promise.all([c.from('hub_settings').select('value').eq('key', 'folder_layout').maybeSingle(), c.rpc('hub_is_admin')]);
+      teamDefault = (td.data && td.data.value) || null; isAdmin = adm.data === true;
+      if (openId && !editing) renderDetail();
+    } catch (e) {}
+  }
+
+  const safeUrl = u => { u = String(u || '').trim(); if (!u) return ''; if (!/^[a-z][\w+.-]*:/i.test(u)) u = 'https://' + u; return /^https?:\/\//i.test(u) ? u : ''; };
+  // Share links → their embeddable form (Loom, YouTube, Figma, Google Docs / Slides / Sheets).
+  function embedSrc(u) {
+    u = safeUrl(u); if (!u) return '';
+    try {
+      const x = new URL(u), host = x.hostname.replace(/^www\./, '');
+      if (host === 'loom.com') return u.replace('/share/', '/embed/');
+      if (host === 'youtu.be') return 'https://www.youtube.com/embed/' + x.pathname.slice(1);
+      if (host === 'youtube.com') return x.searchParams.get('v') ? 'https://www.youtube.com/embed/' + x.searchParams.get('v') : u;
+      if (host === 'figma.com' && !/\/embed/.test(x.pathname)) return 'https://www.figma.com/embed?embed_host=share&url=' + encodeURIComponent(u);
+      if (host === 'docs.google.com') return u.replace(/\/(edit|view)([?#].*)?$/, '/preview');
+    } catch (e) {}
+    return u;
+  }
+  const linkify = t => esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+
+  function editbarHtml() {
+    const h = cur.head || {};
+    return '<div class="editbar"><span class="etitle">🎨 Customizing</span>' +
+      '<span class="ehint">Drag ⠿ to move a card · drag its right edge (or pick ⅓ ½ ⅔ Full) to resize · 🎨 to rename and recolor · 👁 to hide</span>' +
+      '<button class="btn small" type="button" data-eact="add" data-type="links">＋ Links</button>' +
+      '<button class="btn small" type="button" data-eact="add" data-type="text">＋ Notes</button>' +
+      '<button class="btn small" type="button" data-eact="add" data-type="embed">＋ Embed</button>' +
+      '<span class="ehead">Header <input type="color" data-eh="bg" value="' + esc(h.bg || '#ffffff') + '" title="Header background"><input type="color" data-eh="ink" value="' + esc(h.ink || '#1d2240') + '" title="Header text"><button class="btn small ghost" type="button" data-eact="headreset">Reset</button></span>' +
+      '<button class="btn small" type="button" data-eact="default" title="Folders you haven’t customized will start from this layout">Use as default for all folders</button>' +
+      '<button class="btn small danger" type="button" data-eact="reset">Reset folder</button>' +
+      '<button class="btn small primary" type="button" data-eact="done">Done</button>' +
+      '<span class="lstatus' + (lstatus[1] ? ' warn' : '') + '">' + esc(lstatus[0]) + '</span></div>';
+  }
+  function toolsHtml(b) {
+    return '<div class="btools"><button class="bdrag" type="button" data-bact="drag" title="Drag to move">⠿</button><span class="sep"></span>' +
+      WIDTHS.map(([w, l]) => '<button type="button" data-bact="width" data-w="' + w + '" class="' + (b.w === w ? 'on' : '') + '" title="' + l + ' width">' + l + '</button>').join('') +
+      '<span class="sep"></span><button type="button" data-bact="style" class="' + (styling === b.id ? 'on' : '') + '" title="Rename and recolor">🎨</button>' +
+      '<button type="button" data-bact="hide" title="' + (b.hidden ? 'Show this card' : 'Hide this card') + '">' + (b.hidden ? '🙈' : '👁') + '</button>' +
+      (b.type !== 'section' ? '<button type="button" data-bact="del" title="Delete this block">✕</button>' : '') + '</div>' +
+      '<span class="bresize" data-bact="resize" title="Drag to resize"></span>';
+  }
+  function styleHtml(b) {
+    const s = SECTIONS.find(x => x.kind === b.id);
+    const color = (f, v, d) => '<span class="brow"><input type="color" data-bf="' + f + '" value="' + esc(v || d) + '"><button class="btn small ghost" type="button" data-bact="clr" data-f="' + f + '">' + (v ? 'Default' : 'Default ✓') + '</button></span>';
+    return '<div class="bstyle">' +
+      '<label>Title</label><input type="text" data-bf="title" value="' + esc(b.title || '') + '" placeholder="' + esc(s ? s.label : TYPE_LABEL[b.type]) + '">' +
+      '<label>Icon</label><input type="text" data-bf="emoji" maxlength="4" value="' + esc(b.emoji || '') + '" placeholder="emoji (optional)">' +
+      '<label>Background</label>' + color('bg', b.bg, '#ffffff') +
+      '<label>Title color</label>' + color('ink', b.ink, '#6b7090') +
+      (b.type === 'embed' ? '<label>Height</label><select data-bf="h">' + [[240, 'Short'], [380, 'Medium'], [560, 'Tall'], [760, 'Extra tall']].map(([v, l]) => '<option value="' + v + '"' + ((b.h || 380) === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' : '') +
+      '</div>';
+  }
+  function customInner(b) {
+    const head = '<h3>' + esc(b.emoji || TYPE_EMOJI[b.type]) + ' ' + esc(b.title || TYPE_LABEL[b.type]) + '</h3>';
+    if (b.type === 'links') {
+      const links = b.links || [];
+      if (editing) return head + links.map((l, i) => '<div class="lnk-ed" data-i="' + i + '"><input data-lf="label" value="' + esc(l.label || '') + '" placeholder="Label (e.g. Shared Drive)"><input data-lf="url" value="' + esc(l.url || '') + '" placeholder="https://…"><button class="btn small ghost" type="button" data-bact="lnkdel" title="Remove">✕</button></div>').join('') +
+        '<button class="btn small" type="button" data-bact="lnkadd">＋ Add link</button>';
+      const ok = links.filter(l => safeUrl(l.url));
+      return head + (ok.length ? '<div class="lnks">' + ok.map(l => '<a class="lnk" href="' + esc(safeUrl(l.url)) + '" target="_blank" rel="noopener" title="' + esc(safeUrl(l.url)) + '"><span>' + esc(l.label || safeUrl(l.url).replace(/^https?:\/\//, '')) + '</span> ↗</a>').join('') + '</div>' : '<div class="none">No links yet. Click 🎨 Customize to add some.</div>');
+    }
+    if (b.type === 'text') return head + (editing ? '<textarea class="bfield" data-bf="text" placeholder="Notes for the team: next steps, contacts, context…">' + esc(b.text || '') + '</textarea>'
+      : (b.text ? '<div class="btext">' + linkify(b.text) + '</div>' : '<div class="none">No notes yet.</div>'));
+    // embed
+    const src = embedSrc(b.url);
+    return head + (editing ? '<input class="bfield" data-bf="url" value="' + esc(b.url || '') + '" placeholder="Paste a Loom, Figma, YouTube or Google Docs / Slides link" style="margin-bottom:8px">' : '') +
+      (src ? '<iframe class="bembed" src="' + esc(src) + '" style="height:' + (b.h || 380) + 'px" loading="lazy" allowfullscreen sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"></iframe>' : '<div class="none">Paste a link to embed it here.</div>');
+  }
+  function blockHtml(b, it) {
+    if (b.hidden && !editing) return '';
+    const s = b.type === 'section' && SECTIONS.find(x => x.kind === b.id);
+    const style = (b.bg ? 'background:' + b.bg + ';' + inksFor(b.bg) : '') + (b.ink ? '--blk-ink:' + b.ink + ';' : '');
+    return '<div class="sec blk w' + b.w + (b.hidden ? ' is-hidden' : '') + '" data-bid="' + esc(b.id) + '"' + (s ? ' data-sec="' + s.kind + '"' : '') + (style ? ' style="' + esc(style) + '"' : '') + '>' +
+      (editing ? toolsHtml(b) : '') + (s ? sectionInner(s, it, b) : customInner(b)) + (editing && styling === b.id ? styleHtml(b) : '') + '</div>';
+  }
+  // A card with its own background gets text that reads on it, in either theme.
+  function inksFor(bg) {
+    const m = /^#([0-9a-f]{6})$/i.exec(bg || ''); if (!m) return '';
+    const n = parseInt(m[1], 16), l = (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255;
+    return l > 0.55 ? '--ink:#1d2240;--muted:#6b7090;--line:#e3e5f2;--page:rgba(255,255,255,.65);color:#1d2240;'
+      : '--ink:#f4f5fb;--muted:#c3c7e4;--line:rgba(255,255,255,.18);--page:rgba(255,255,255,.08);color:#f4f5fb;';
+  }
+  const blockOf = el => { const n = el && el.closest('[data-bid]'); return n && cur.blocks.find(b => b.id === n.dataset.bid); };
+
+  // Editbar: add blocks, header colors, default / reset / done.
+  $('editbar').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-eact]'); if (!btn) return;
+    const act = btn.dataset.eact;
+    if (act === 'done') { editing = false; styling = null; renderDetail(); return; }
+    if (act === 'add') {
+      const t = btn.dataset.type, b = { id: 'b-' + Math.random().toString(36).slice(2, 8), type: t, w: t === 'embed' ? 6 : 3 };
+      if (t === 'links') b.links = [{ label: '', url: '' }];
+      cur.blocks.unshift(b); styling = null; renderDetail(); queueSave();
+      const el = $('sections').querySelector('[data-bid="' + b.id + '"]'); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); const i = el.querySelector('input, textarea'); if (i) i.focus(); }
+      return;
+    }
+    if (act === 'headreset') { cur.head = {}; renderDetail(); queueSave(); return; }
+    if (act === 'reset') {
+      if (!confirm('Reset this folder to the default layout? Its custom blocks will be removed.')) return;
+      cur = normalize(myDefault() || teamDefault); styling = null; await saveLayout(null); renderDetail(); return;
+    }
+    if (act === 'default') {
+      const L = clone(cur);
+      // Notes, links and embeds are usually about this merchant: offer to carry over just the blocks.
+      const filled = L.blocks.some(b => (b.type === 'text' && b.text) || (b.type === 'embed' && b.url) || (b.type === 'links' && (b.links || []).some(l => l.url)));
+      if (filled && !confirm('Include this folder’s notes, links and embeds in the default?\n\nOK = include them · Cancel = keep the blocks, but empty')) {
+        L.blocks.forEach(b => { if (b.type === 'text') delete b.text; if (b.type === 'embed') delete b.url; if (b.type === 'links') b.links = [{ label: '', url: '' }]; });
+      }
+      if (isAdmin && confirm('Publish this layout as the team default? Every rep’s folders that haven’t been customized will use it.\n\nCancel = use it as your own default only.')) {
+        try {
+          const c = await SIsb.client();
+          const { error } = await c.from('hub_settings').upsert({ key: 'folder_layout', value: L }, { onConflict: 'key' });
+          if (error) throw error;
+          teamDefault = L; try { localStorage.removeItem(MY_DEFAULT_KEY); } catch (x) {}
+          setStatus('Published ✓ · this is now the team’s default folder layout');
+        } catch (x) { setStatus('Couldn’t publish: ' + (x.message || x), true); }
+        return;
+      }
+      try { localStorage.setItem(MY_DEFAULT_KEY, JSON.stringify(L)); } catch (x) {}
+      setStatus('Saved ✓ · folders you haven’t customized now start from this layout');
+    }
+  });
+  $('editbar').addEventListener('input', e => {
+    const k = e.target.dataset.eh; if (!k) return;
+    cur.head[k] = e.target.value; $('dhead').style.background = cur.head.bg || ''; $('dhead').style.color = cur.head.ink || ''; $('dhead').classList.toggle('inked', !!cur.head.ink); queueSave();
+  });
+
+  // Block toolbars + edits.
+  $('sections').addEventListener('click', e => {
+    const btn = e.target.closest('[data-bact]'); if (!btn || !editing) return;
+    const b = blockOf(btn); if (!b) return;
+    const act = btn.dataset.bact;
+    if (act === 'width') b.w = +btn.dataset.w;
+    else if (act === 'style') styling = styling === b.id ? null : b.id;
+    else if (act === 'hide') b.hidden = !b.hidden;
+    else if (act === 'del') { if (!confirm('Delete this ' + (TYPE_LABEL[b.type] || '').toLowerCase() + ' block?')) return; cur.blocks = cur.blocks.filter(x => x !== b); }
+    else if (act === 'clr') delete b[btn.dataset.f];
+    else if (act === 'lnkadd') (b.links = b.links || []).push({ label: '', url: '' });
+    else if (act === 'lnkdel') b.links.splice(+btn.closest('[data-i]').dataset.i, 1);
+    else return;
+    renderDetail(); if (act !== 'style') queueSave();
+    if (act === 'lnkadd') { const ins = $('sections').querySelectorAll('[data-bid="' + b.id + '"] .lnk-ed input'); if (ins.length) ins[ins.length - 2].focus(); }
+  });
+  $('sections').addEventListener('input', e => {
+    if (!editing) return;
+    const t = e.target, b = blockOf(t); if (!b) return;
+    if (t.dataset.lf) { const l = b.links[+t.closest('[data-i]').dataset.i]; if (l) l[t.dataset.lf] = t.value; }
+    else if (t.dataset.bf) {
+      const f = t.dataset.bf;
+      b[f] = f === 'h' ? +t.value : t.value;
+      if (f === 'bg' || f === 'ink') { const el = t.closest('[data-bid]'); if (f === 'bg') el.style.cssText = 'background:' + t.value + ';' + inksFor(t.value) + (b.ink ? '--blk-ink:' + b.ink + ';' : ''); else el.style.setProperty('--blk-ink', t.value); const d = t.parentNode.querySelector('[data-bact="clr"]'); if (d) d.textContent = 'Default'; }
+      if (f === 'h' || f === 'url') { clearTimeout(e.target._r); e.target._r = setTimeout(() => { const pos = t.selectionStart; renderDetail(); const n = $('sections').querySelector('[data-bid="' + b.id + '"] [data-bf="' + f + '"]'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (x) {} } }, 700); }
+    } else return;
+    queueSave();
+  });
+  // Drag ⠿ to move, drag the right edge to resize (pointer events: works inside the Hub's frame).
+  $('sections').addEventListener('pointerdown', e => {
+    const h = e.target.closest('[data-bact="drag"], [data-bact="resize"]'); if (!h || !editing) return;
+    const el = h.closest('[data-bid]'), b = blockOf(el); if (!b) return;
+    e.preventDefault();
+    let move;
+    if (h.dataset.bact === 'drag') {
+      el.classList.add('dragging');
+      move = ev => {
+        const t = document.elementFromPoint(ev.clientX, ev.clientY), over = t && t.closest('#sections > .blk');
+        if (!over || over === el) return;
+        const r = over.getBoundingClientRect();
+        const after = ev.clientY > r.bottom - r.height / 3 || (ev.clientY > r.top + r.height / 3 && ev.clientX > r.left + r.width / 2);
+        if (after ? over.nextElementSibling !== el : over.previousElementSibling !== el) over.parentNode.insertBefore(el, after ? over.nextSibling : over);
+      };
+    } else {
+      const grid = $('sections'), gap = parseFloat(getComputedStyle(grid).columnGap) || 14, col = (grid.clientWidth - gap * 5) / 6, left = el.getBoundingClientRect().left;
+      move = ev => {
+        const span = (ev.clientX - left + gap) / (col + gap);
+        const w = [2, 3, 4, 6].reduce((p, c) => Math.abs(c - span) < Math.abs(p - span) ? c : p);
+        if (w === b.w) return;
+        el.classList.replace('w' + b.w, 'w' + w); b.w = w;
+        el.querySelectorAll('[data-bact="width"]').forEach(x => x.classList.toggle('on', +x.dataset.w === w));
+      };
+    }
+    const up = () => {
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
+      el.classList.remove('dragging');
+      const ids = [...$('sections').querySelectorAll(':scope > [data-bid]')].map(n => n.dataset.bid);
+      cur.blocks.sort((a, c) => ids.indexOf(a.id) - ids.indexOf(c.id));
+      queueSave();
+    };
+    addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  });
+
+  function showList() { editing = false; styling = null; openId = null; $('detailView').hidden = true; $('listView').hidden = false; renderList(); }
+  function showFolder(id) {
+    openId = id; picks = []; roiDraft = ''; editing = false; styling = null; cur = null; lstatus = ['', false];
+    $('listView').hidden = true; $('unfiled').hidden = true; $('detailView').hidden = false; renderDetail(); scrollTo(0, 0);
+    loadLayout(id).then(() => { if (openId === id && !editing) renderDetail(); });
+  }
 
   function activate(f) {
     SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path });
@@ -285,6 +598,7 @@
     const f = folders.find(x => x.id === openId); if (!f) return;
     if (b.dataset.act === 'activate') { activate(f); renderDetail(); toast(f.name + ' is now the active merchant'); }
     if (b.dataset.act === 'edit') folderForm(f);
+    if (b.dataset.act === 'customize') { editing = !editing; styling = null; if (editing) lstatus = [layoutCol ? '' : 'Saving in this browser only until folder-layouts.sql is run in Supabase.', !layoutCol]; renderDetail(); }
     if (b.dataset.act === 'archive') {
       if (!f.archived && !confirm('Archive “' + f.name + '”? Its saves are kept; you can restore it from “Show archived”.')) return;
       try {
@@ -559,6 +873,7 @@
     if (user) $('soBtn').onclick = async () => { await SIsb.signOut(); location.reload(); };
     $('newBtn').hidden = !user;
     if (!user) { $('signin').hidden = false; return; }
+    loadLayoutSettings();
     try { await loadAll(); }
     catch (x) { $('listView').hidden = false; $('grid').innerHTML = '<div class="empty" style="grid-column:1/-1"><b>Couldn’t load folders</b>' + esc(x.message || x) + '</div>'; return; }
     const want = (location.hash.match(/f=([\w-]+)/) || [])[1];
