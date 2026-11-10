@@ -191,13 +191,16 @@
     { kind: 'checkout', label: 'Checkout Experience',  tool: 'Checkout Experience' },
     { kind: 'email',    label: 'Email Automation',     tool: 'Email Automation' },
     { kind: 'claim',    label: 'Claim Wizard',         tool: 'Claim Wizard' },
+    { kind: 'onepager', label: 'One-Pagers',           tool: 'One-Pager' },
   ];
   // Sections where a rep can also file an existing document (upload or link) instead of generating one.
-  const DOC_KINDS = { proposal: 1, msa: 1, mnda: 1, checkout: 1, email: 1, claim: 1 };
+  const DOC_KINDS = { proposal: 1, msa: 1, mnda: 1, checkout: 1, email: 1, claim: 1, onepager: 1 };
   // Of those, the tool sections file existing mockups (Figma exports, screenshots) — images allowed too.
   const MOCKUP_KINDS = { checkout: 1, email: 1, claim: 1 };
-  const SHORT = { roi: 'ROI', proposal: 'Proposal', msa: 'MSA', mnda: 'MNDA', checkout: 'Checkout', email: 'Email', claim: 'Claims' };
+  const SHORT = { roi: 'ROI', proposal: 'Proposal', msa: 'MSA', mnda: 'MNDA', checkout: 'Checkout', email: 'Email', claim: 'Claims', onepager: 'One-Pager' };
   const CALC = 'https://drewshafe.github.io/si-roi-calculator/';
+  // One-Pagers are filed as kind 'onepager'; until the hosted sb.js lists it, add it (same array saveAsset checks).
+  if (window.SIsb && Array.isArray(SIsb.ASSET_KINDS) && SIsb.ASSET_KINDS.indexOf('onepager') < 0) SIsb.ASSET_KINDS.push('onepager');
 
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

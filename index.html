@@ -807,10 +807,12 @@
             // Custom Build is reached from the ROI tab's "Custom" sub-tab, not the nav.
             { id: 'custom-build', emoji: '🛠️', name: 'Custom Build', url: 'https://drewshafe.github.io/si-roi-calculator/custom-build.html', hidden: true },
             // "Preview Designer" is a group header — clicking it reveals its sub-tabs below.
-            { id: 'preview',      emoji: '🎨', logo: 'previewdesigner_logo.png', logoLight: 'previewdesigner_logo_light.png', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard'] },
+            { id: 'preview',      emoji: '🎨', logo: 'previewdesigner_logo.png', logoLight: 'previewdesigner_logo_light.png', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard', 'one-pager'] },
             { id: 'widget-designer',   emoji: '🛒', logo: 'checkoutexp_logo.png',   logoLight: 'checkoutexp_logo.png',   name: 'Checkout Experience', url: 'https://drewshafe.github.io/si-widget-designer/',   parent: 'preview' },
             { id: 'email-automation',  emoji: '✉️', logo: 'emailbranding_logo.png',  logoLight: 'emailbranding_logo.png',  name: 'Email Automation',    url: 'https://drewshafe.github.io/si-email-automation/', parent: 'preview' },
             { id: 'claim-wizard',      emoji: '🪄', logo: 'claimwiz_logo.png',       logoLight: 'claimwiz_logo.png',       name: 'Claim Wizard',        url: 'https://drewshafe.github.io/si-claim-wizard/',     parent: 'preview' },
+            // One-Pager ("Deal Doc"): the post-meeting draft-order one-pager, filled from the deal (Brand Folder + rep), exported as a Letter PDF.
+            { id: 'one-pager',         emoji: '📄', name: 'One-Pager', url: 'https://drewshafe.github.io/si-widget-designer/onepager.html', parent: 'preview' },
             // Gorgias Calculator: off by default (the "Other Calculators" group is retired);
             // reps can switch it back on in ⚙ Customize tabs. Self-Insured + Competitor
             // Comparison were merged into the ROI Builder's "Competitor" calc type.
@@ -822,7 +824,7 @@
         // "Proposal" sub-tab (stacked view), so it stays in TOOLS.
         const LAYOUT_KEY = 'si_hub_layout';
         const DEFAULT_LAYOUT = () => ({ order: ['folders', 'roi', 'vault', 'preview', 'proposal', 'gorgias'], foldersSeeded: true, off: ['proposal', 'gorgias'], custom: [], look: {},
-                                        kids: { preview: ['widget-designer', 'email-automation', 'claim-wizard'] } });
+                                        kids: { preview: ['widget-designer', 'email-automation', 'claim-wizard', 'one-pager'] } });
         // ── Team default: a hub admin's layout, published from ⚙ Customize tabs (Supabase hub_settings) ──
         // Cached here. It's every rep's starting point, and whenever a newer one is published it
         // replaces the rep's tabs; tabs a rep added for themselves are kept.
@@ -1754,7 +1756,7 @@
         function _pmActive() { return document.body.classList.contains('pm'); }
         function _withTheme(url) { return _pmActive() ? url + (url.includes('?') ? '&' : '?') + 'theme=midnight' : url; }
         // ── Merchant Folders: active-merchant chip + Load requests from the Folders tab ──
-        const FOLDER_KIND_TOOL = { checkout: 'widget-designer', email: 'email-automation', claim: 'claim-wizard', proposal: 'proposal', msa: 'proposal', mnda: 'proposal' };
+        const FOLDER_KIND_TOOL = { checkout: 'widget-designer', email: 'email-automation', claim: 'claim-wizard', onepager: 'one-pager', proposal: 'proposal', msa: 'proposal', mnda: 'proposal' };
         function paintActiveMerchant() {
             const a = window.SIsb ? SIsb.getActiveFolder() : null;
             const chip = document.getElementById('amChip'); if (!chip) return;
