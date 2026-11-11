@@ -294,8 +294,9 @@
   function sectionInner(s, it, b) {
       const rows = it[s.kind];
       return '<h3>' + (b.icon || b.emoji ? iconOf(b) + ' ' : '') + esc(b.title || s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') +
-        (DOC_KINDS[s.kind] ? '<span class="docacts"><button class="btn small" type="button" data-act="upload" title="' + (MOCKUP_KINDS[s.kind] ? 'Upload an existing mockup (PDF or image)' : 'Upload an existing PDF or Word file') + '">⬆ Upload</button><button class="btn small" type="button" data-act="addlink" title="' + (MOCKUP_KINDS[s.kind] ? 'File a link to an existing mockup (e.g. Figma)' : 'File a link to an existing doc (e.g. Google Doc)') + '">🔗 Add link</button></span>' : '') + '</h3>' +
-        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (MOCKUP_KINDS[s.kind] ? 'save from the ' + esc(s.tool) + ' tab, or upload / link an existing mockup.' : DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : (s.kind === 'roi' ? 'save from the ' + esc(s.tool) + ' tab, or paste a calc link below.' : 'save from the ' + esc(s.tool) + ' tab.')) + '</div>') +
+        (DOC_KINDS[s.kind] ? '<span class="docacts"><button class="btn small" type="button" data-act="upload" title="' + (MOCKUP_KINDS[s.kind] ? 'Upload an existing mockup (PDF or image)' : 'Upload an existing PDF or Word file') + '">⬆ Upload</button><button class="btn small" type="button" data-act="addlink" title="' + (MOCKUP_KINDS[s.kind] ? 'File a link to an existing mockup (e.g. Figma)' : 'File a link to an existing doc (e.g. Google Doc)') + '">🔗 Add link</button>' +
+          (s.kind === 'onepager' ? '<button class="btn small primary" type="button" data-act="fathom" title="Paste a Fathom call, share or call-folder link: the One-Pager drafts a meeting recap from the call and saves it here">🎙 From Fathom call</button>' : '') + '</span>' : '') + '</h3>' +
+        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (s.kind === 'onepager' ? 'draft one from a Fathom call (🎙), build one in the One-Pager tab, or upload / link an existing doc.' : MOCKUP_KINDS[s.kind] ? 'save from the ' + esc(s.tool) + ' tab, or upload / link an existing mockup.' : DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : (s.kind === 'roi' ? 'save from the ' + esc(s.tool) + ' tab, or paste a calc link below.' : 'save from the ' + esc(s.tool) + ' tab.')) + '</div>') +
         (s.kind === 'roi' && rows.length ? '<div class="optbar' + (picks.length ? ' on' : '') + '"><span class="hint">Tick scenarios in the order you want their tabs</span>' +
           '<button class="btn small primary" type="button" data-act="optcopy">📋 Copy ' + (picks.length > 1 ? 'options link (' + picks.length + ')' : 'link') + '</button>' +
           '<button class="btn small" type="button" data-act="optopen" title="Open in a new window">↗</button></div>' : '') +
@@ -657,6 +658,7 @@
     }
     if (b.dataset.act === 'optopen' && picks.length) { window.open(optLink(), '_blank', 'noopener'); return; }
     if (b.dataset.act === 'upload' || b.dataset.act === 'addlink') return addDoc(b.closest('[data-sec]').dataset.sec, b.dataset.act);
+    if (b.dataset.act === 'fathom') return onePagerFromCall();
     if (b.dataset.act === 'roisave') return saveRoiLink(b);
     const row = b.closest('.row'), kind = row.dataset.kind, id = row.dataset.id;
     if (b.dataset.act === 'pick') {
@@ -754,6 +756,22 @@
       roiDraft = '';
       await loadAll(); renderDetail(); toast(msg);
     } catch (x) { btn.disabled = false; toast('Couldn’t save it: ' + (x.message || x)); }
+  }
+
+  // ── One-Pager from a Fathom call: a call, share or call-folder link. The One-Pager tab reads the
+  // call (fathom-call function), drafts the meeting recap with Claude and saves it to this folder. ──
+  const ONEPAGER = 'https://drewshafe.github.io/si-widget-designer/onepager.html';
+  const FATHOM_RE = /^(https?:\/\/)?([\w-]+\.)?fathom\.(video|ai)\/(calls|share|folders)\/[\w-]+/i;
+  function onePagerFromCall() {
+    const f = folders.find(x => x.id === openId); if (!f) return;
+    let url = (prompt('Paste a Fathom link for ' + f.name + ':\n• a call (fathom.video/calls/…) or share link (fathom.video/share/…), or\n• the call folder (fathom.video/folders/…) to use the latest call with them') || '').trim();
+    if (!url) return;
+    if (!FATHOM_RE.test(url)) { toast('That isn’t a Fathom call, share or folder link'); return; }
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    if (/\/folders\//i.test(url) && !f.domain) { toast('Add ' + f.name + '’s store URL (✎ Edit folder) so its Fathom calls can be found'); return; }
+    SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path });
+    if (parent !== window) { hub({ type: 'openOnePagerCall', url: url, domain: f.domain || '' }); return; }
+    window.open(ONEPAGER + '?fathom=' + encodeURIComponent(url) + (f.domain ? '&domain=' + encodeURIComponent(f.domain) : ''), '_blank', 'noopener');
   }
 
   // File an existing Proposal / MSA / MNDA (PDF/Word) or Checkout / Email / Claim mockup (PDF/image) — upload or paste a link.

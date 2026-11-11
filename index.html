@@ -1782,6 +1782,15 @@
                 activate('roi');
                 if (frames.roi) frames.roi.src = 'https://drewshafe.github.io/si-roi-calculator/index.html?id=' + encodeURIComponent(d.id);
             }
+            // One-Pagers → 🎙 From Fathom call: the One-Pager drafts the recap from that call.
+            if (d.type === 'openOnePagerCall' && typeof d.url === 'string' && /^https:\/\/([\w-]+\.)?fathom\.(video|ai)\//i.test(d.url)) {
+                const tool = TOOLS.find(t => t.id === 'one-pager');
+                activate('one-pager');
+                if (frames['one-pager'] && tool) {
+                    const base = _withTheme(tool.url);
+                    frames['one-pager'].src = base + (base.includes('?') ? '&' : '?') + 'fathom=' + encodeURIComponent(d.url) + (d.domain ? '&domain=' + encodeURIComponent(String(d.domain)) : '');
+                }
+            }
             if (d.type === 'openAsset' && d.id && FOLDER_KIND_TOOL[d.kind]) {
                 const toolId = FOLDER_KIND_TOOL[d.kind], tool = TOOLS.find(t => t.id === toolId);
                 activate(toolId);
