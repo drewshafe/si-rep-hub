@@ -286,6 +286,12 @@
            can't auto-size to their content, and carving the fixed viewport into two
            panes left each too short to use — so instead the whole area scrolls as one,
            with the calc on top and the editor below at natural working heights. */
+        /* ROI Builder → Custom: the Custom Build editor lives in the sidebar (wider while open);
+           the canvas beside it is the rep calc, or the merchant link (.cb-canvas). */
+        body.cb-on { --sidebar-width: 400px; }
+        #cbPanel { display: block; width: 100%; height: calc(100vh - 260px); min-height: 480px; border: 0; border-radius: 12px; background: #fff; box-shadow: 0 2px 10px rgba(20,24,48,.12); }
+        .frame-wrap.cb-merchant > iframe { display: none !important; }
+        .frame-wrap.cb-merchant > iframe.cb-canvas { display: block !important; }
         .frame-wrap.cb-stacked { overflow-y: auto; }
         .frame-wrap.cb-stacked iframe.cb-top { position: relative; inset: auto; display: block !important; width: 100%; height: 820px; }
         .frame-wrap.cb-stacked iframe.cb-bottom { position: relative; inset: auto; display: block !important; width: 100%; height: 1150px; border-top: 3px solid #4656c7; box-shadow: 0 -5px 18px rgba(0,0,0,0.12); }
@@ -1200,17 +1206,20 @@
                         <div class="ri-disp-row"><span class="ri-lbl">Text</span><div class="ri-disp-btns"><button data-disp="text" data-val="0.9">S</button><button data-disp="text" data-val="1">M</button><button data-disp="text" data-val="1.15">L</button></div></div>
                         <div class="ri-disp-row"><span class="ri-lbl">Size</span><div class="ri-disp-btns"><button data-disp="zoom" data-val="dec">−</button><span id="ri-zoom-val" class="ri-disp-val">100%</span><button data-disp="zoom" data-val="inc">+</button></div></div>
                     </div>
-                </div>`;
+                </div>
+                <!-- Pane: Custom (the Custom Build editor; the canvas is the main area) -->
+                <div class="ri-pane" data-pane="custom"><iframe id="cbPanel" title="Custom Build" allow="clipboard-write; clipboard-read"></iframe></div>`;
             hubCollapsibles(p);
             // Sub-tab switching (Coverage / Display / Custom)
             p.querySelectorAll('.ri-subtab').forEach(tab => {
                 tab.addEventListener('click', () => {
                     const pane = tab.dataset.pane;
-                    // "Custom" / "Proposal" toggle a tool stacked beneath the calc.
-                    if (pane === 'custom') { toggleCustomStack(); return; }
+                    // "Proposal" toggles a tool stacked beneath the calc. "Custom" opens the
+                    // Custom Build editor in this pane, with the canvas in the main area.
                     if (pane === 'proposal') { toggleStack('proposal'); return; }
-                    p.querySelectorAll('.ri-subtab').forEach(t => { if (t.dataset.pane !== 'custom' && t.dataset.pane !== 'proposal') t.classList.toggle('active', t === tab); });
+                    p.querySelectorAll('.ri-subtab').forEach(t => { if (t.dataset.pane !== 'proposal') t.classList.toggle('active', t === tab); });
                     p.querySelectorAll('.ri-pane').forEach(pn => pn.classList.toggle('active', pn.dataset.pane === pane));
+                    if (pane === 'custom') openCustomPane(); else closeCustomPane();
                 });
             });
             // Feature toggles → post the desired boolean; the calc echoes back the
@@ -1305,8 +1314,8 @@
                 // Preserve the #cbimg logo hash (not just the query) so a pasted custom link
                 // shows its logo on the calc, not only its accent colors.
                 if (frames['roi']) frames['roi'].src = 'https://drewshafe.github.io/si-roi-calculator/' + search + hash;
-                // If the styler is already stacked, re-seed it live from the new link.
-                if (_stackedTool === 'custom-build') { clearStack(); toggleStack('custom-build'); }
+                // If the Custom pane is open, re-seed it from the new link.
+                if (_cbOn) openCustomPane(true);
                 inp.value = '';
             };
             p.querySelector('#ri-loadlink-btn').addEventListener('click', loadFromLink);
@@ -1450,6 +1459,9 @@
         let _hubPastedLink = null; // a link pasted into the loader with no ?id= (so the Custom tab can seed its styler via ?base=)
         // Open Custom Build, loading a specific cloud config (branded) when one is set.
         function openCustomBuild(id) {
+            // Opens in the ROI Builder's Custom pane (editor in the sidebar, canvas beside it).
+            if (id) { _hubCloudId = id; _hubPastedLink = null; }
+            showRoiPane('custom'); if (_cbOn) { openCustomPane(true); return; }
             const tool = TOOLS.find(t => t.id === 'custom-build');
             if (!tool) return;
             const url = tool.url + (id ? '?id=' + encodeURIComponent(id) : '');
@@ -1511,7 +1523,69 @@
             const sub = document.querySelector('.ri-subtab[data-pane="' + _paneForTool(toolId) + '"]');
             if (sub) sub.classList.add('active');
         }
-        function toggleCustomStack() { toggleStack('custom-build'); }
+        function toggleCustomStack() { showRoiPane('custom'); }
+
+        // ── ROI Builder → Custom: Custom Build editor in the sidebar, canvas in the main area ──
+        // The editor (custom-build.html?panel=1) posts {siCB:'canvas'|'edit'|'density'}; the canvas
+        // page (rep calc or merchant link, both run cb-layout.js) posts {siCBx:'op'} edits back.
+        let _cbOn = false, _cbView = 'calc', _cbLast = null, _cbEdit = { on: false, sel: null }, _cbLoadedSig = null, _cbWantSig = null;
+        let cbCanvasEl = null;   // the merchant-link canvas (proposal.html)
+        const cbPanel = () => document.getElementById('cbPanel');
+        const cbPanelWin = () => { const f = cbPanel(); return f && f.contentWindow; };
+        const cbCanvasWin = () => _cbView === 'merchant' ? (cbCanvasEl && cbCanvasEl.contentWindow) : roiWin();
+        function showRoiPane(pane) {
+            if (activeId !== 'roi') activate('roi');
+            const tab = document.querySelector('.ri-subtab[data-pane="' + pane + '"]');
+            if (tab) tab.click();
+        }
+        function openCustomPane(force) {
+            if (activeId !== 'roi') activate('roi');
+            if (_stackedTool) clearStack();
+            _cbOn = true; document.body.classList.add('cb-on');
+            const pf = cbPanel(); if (!pf) return;
+            let seed = '';
+            if (_hubCloudId) seed = '&id=' + encodeURIComponent(_hubCloudId);
+            else if (_hubPastedLink) seed = '&base=' + encodeURIComponent(encodeURIComponent(_hubPastedLink));
+            const tool = TOOLS.find(t => t.id === 'custom-build'); if (!tool) return;
+            if (force || !pf.getAttribute('src') || pf.dataset.seed !== seed) { pf.dataset.seed = seed; pf.src = _withTheme(tool.url + '?panel=1' + seed); }
+            else { cbShowCanvas(); cbPush(); }
+        }
+        function closeCustomPane() {
+            if (!_cbOn) return;
+            _cbOn = false; document.body.classList.remove('cb-on');
+            frameWrap.classList.remove('cb-merchant');
+            [roiWin(), cbCanvasEl && cbCanvasEl.contentWindow].forEach(w => { if (w) try { w.postMessage({ siCBx: 'edit', on: false }, '*'); } catch (e) {} });
+        }
+        function cbShowCanvas() {
+            const merch = _cbOn && _cbView === 'merchant';
+            if (merch && !cbCanvasEl) {
+                cbCanvasEl = document.createElement('iframe');
+                cbCanvasEl.className = 'cb-canvas'; cbCanvasEl.title = 'Merchant link';
+                cbCanvasEl.setAttribute('allow', 'clipboard-write; clipboard-read');
+                cbCanvasEl.addEventListener('load', () => { _cbLoadedSig = _cbWantSig; setTimeout(cbPush, 60); });
+                frameWrap.appendChild(cbCanvasEl);
+            }
+            frameWrap.classList.toggle('cb-merchant', merch);
+        }
+        // Bring the canvas up to date: reload the merchant link when its data / branding changed,
+        // else re-apply the build live; then the edit state (on the shown canvas, off on the other).
+        function cbPush() {
+            if (!_cbOn || !_cbLast) return;
+            if (_cbView === 'merchant' && cbCanvasEl) {
+                if (_cbLast.sig !== _cbLoadedSig) {
+                    if (_cbWantSig !== _cbLast.sig) { _cbWantSig = _cbLast.sig; cbCanvasEl.src = _withTheme(_cbLast.url); }
+                    return;   // the load handler pushes again
+                }
+                try { cbCanvasEl.contentWindow.postMessage({ siCBx: 'apply', cfg: _cbLast.cfg }, '*'); } catch (e) {}
+            }
+            cbSendEdit();
+        }
+        function cbSendEdit() {
+            const on = _cbOn && !!_cbEdit.on;
+            const cur = cbCanvasWin(), other = _cbView === 'merchant' ? roiWin() : (cbCanvasEl && cbCanvasEl.contentWindow);
+            if (cur) try { cur.postMessage({ siCBx: 'edit', on: on, sel: _cbEdit.sel || null }, '*'); } catch (e) {}
+            if (other) try { other.postMessage({ siCBx: 'edit', on: false }, '*'); } catch (e) {}
+        }
 
         let repState = {};
         let _savedSig = null; // signature of the last-rendered saved-calc set (guards needless re-renders)
@@ -1663,8 +1737,22 @@
             document.getElementById('ri-upfront-margin').textContent = fmtMoney(margin);
         }
         window.addEventListener('message', e => {
+            const pw = cbPanelWin();
+            if (e.data && pw && e.source === pw) {             // the Custom pane's editor
+                const d = e.data;
+                if (d.siCB === 'canvas') { _cbView = d.view === 'merchant' ? 'merchant' : 'calc'; _cbLast = d; _cbEdit = d.edit || _cbEdit; cbShowCanvas(); cbPush(); }
+                else if (d.siCB === 'edit') { _cbView = d.view === 'merchant' ? 'merchant' : 'calc'; _cbEdit = { on: !!d.on, sel: d.sel || null }; cbShowCanvas(); cbSendEdit(); }
+                else if (d.siCB === 'density' && typeof d.density === 'string') { repDisplay.density = d.density; saveDisplayPrefs(); syncDisplayUI(); sendDisplay(); }
+            }
+            // Edits made on the canvas → the editor (it owns the build)
+            if (e.data && e.data.siCBx === 'op' && _cbOn && pw && (e.source === roiWin() || (cbCanvasEl && e.source === cbCanvasEl.contentWindow))) {
+                try { pw.postMessage(e.data, '*'); } catch (err) {}
+            }
             if (e.data && e.data.siHub === 'state') {
                 repState = e.data; syncRepInputs(e.data);
+                if (_cbOn && pw && typeof e.data.merchantLink === 'string' && e.data.merchantLink) {
+                    try { pw.postMessage({ siHub: 'repdata', link: e.data.merchantLink, display: repDisplay }, '*'); } catch (err) {}
+                }
                 // Keep the inline Custom Build preview synced to the rep's live inputs + display.
                 if (_stackedTool === 'custom-build' && frames['custom-build'] && frames['custom-build'].contentWindow && typeof e.data.merchantLink === 'string' && e.data.merchantLink) {
                     try { frames['custom-build'].contentWindow.postMessage({ siHub: 'repdata', link: e.data.merchantLink, display: repDisplay }, '*'); } catch (err) {}
@@ -1677,8 +1765,8 @@
             }
             // Custom Build (stacked) finished loading and wants the calc's current data.
             if (e.data && e.data.siCB === 'needData') {
-                if (repState && repState.merchantLink && frames['custom-build'] && frames['custom-build'].contentWindow) {
-                    try { frames['custom-build'].contentWindow.postMessage({ siHub: 'repdata', link: repState.merchantLink, display: repDisplay }, '*'); } catch (err) {}
+                if (repState && repState.merchantLink && e.source) {
+                    try { e.source.postMessage({ siHub: 'repdata', link: repState.merchantLink, display: repDisplay }, '*'); } catch (err) {}
                 }
                 sendApply({ command: 'requestState' }); // force a fresh emit → relayed to Custom Build
             }
@@ -1813,6 +1901,8 @@
             // Leaving the ROI calc tears down the stacked Custom Build editor so it
             // doesn't bleed over other tools' iframes.
             if (id !== 'roi' && _stackedTool) clearStack();
+            if (id !== 'roi') frameWrap.classList.remove('cb-merchant');
+            else if (_cbOn) setTimeout(() => { cbShowCanvas(); cbPush(); }, 0);
             { const land = document.getElementById('rhLanding'); if (land) land.classList.remove('show'); }
 
             // Lazy-load iframe on first visit; keep it alive after (preserves entered data)
@@ -1823,7 +1913,7 @@
                 // Let the embedded calc copy the cloud share link to the clipboard
                 // (☁ Cloud Save). Same-origin, but set it explicitly to be safe.
                 f.setAttribute('allow', 'clipboard-write; clipboard-read');
-                if (id === 'roi') f.addEventListener('load', () => { sendApply({ command: 'requestState' }); sendDisplay(); sendApply({ theme: _pmActive() ? 'midnight' : 'default' }); });
+                if (id === 'roi') f.addEventListener('load', () => { sendApply({ command: 'requestState' }); sendDisplay(); sendApply({ theme: _pmActive() ? 'midnight' : 'default' }); if (_cbOn) setTimeout(() => { const w = cbPanelWin(); if (w && _cbLast) try { w.postMessage({ siHub: 'cbResend' }, '*'); } catch (e) {} cbSendEdit(); }, 400); });
                 frames[id] = f;
                 frameWrap.appendChild(f);
             }
