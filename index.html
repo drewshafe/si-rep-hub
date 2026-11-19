@@ -289,7 +289,7 @@
         /* ROI Builder → Custom: the Custom Build editor lives in the sidebar (wider while open);
            the canvas beside it is the rep calc, or the merchant link (.cb-canvas). */
         body.cb-on { --sidebar-width: 400px; }
-        #cbPanel { display: block; width: 100%; height: calc(100vh - 260px); min-height: 480px; border: 0; border-radius: 12px; background: #fff; box-shadow: 0 2px 10px rgba(20,24,48,.12); }
+        #cbPanel { display: block; width: 100%; height: calc(100vh - 260px); min-height: 360px; border: 0; border-radius: 12px; background: #fff; box-shadow: 0 2px 10px rgba(20,24,48,.12); }
         .frame-wrap.cb-merchant > iframe { display: none !important; }
         .frame-wrap.cb-merchant > iframe.cb-canvas { display: block !important; }
         .frame-wrap.cb-stacked { overflow-y: auto; }
@@ -1545,6 +1545,7 @@
             if (_stackedTool) clearStack();
             _cbOn = true; document.body.classList.add('cb-on');
             const pf = cbPanel(); if (!pf) return;
+            requestAnimationFrame(() => cbFit(true)); setTimeout(() => cbFit(true), 350);   // after the sidebar widens
             let seed = '';
             if (_hubCloudId) seed = '&id=' + encodeURIComponent(_hubCloudId);
             else if (_hubPastedLink) seed = '&base=' + encodeURIComponent(encodeURIComponent(_hubPastedLink));
@@ -1552,6 +1553,19 @@
             if (force || !pf.getAttribute('src') || pf.dataset.seed !== seed) { pf.dataset.seed = seed; pf.src = _withTheme(tool.url + '?panel=1' + seed); }
             else { cbShowCanvas(); cbPush(); }
         }
+        // Fit the editor to the sidebar's visible space: the sub-tabs stay at the top of the scroll
+        // area and the editor fills the rest (it scrolls inside), so nothing ends up behind the footer.
+        function cbFit(scroll) {
+            const f = cbPanel(); if (!f || !_cbOn) return;
+            let sc = f.parentElement;
+            while (sc && sc !== document.body && !/(auto|scroll)/.test(getComputedStyle(sc).overflowY)) sc = sc.parentElement;
+            if (!sc || sc === document.body) return;
+            const sub = document.querySelector('.ri-subnav');
+            const subH = sub ? sub.getBoundingClientRect().height + 10 : 0;
+            f.style.height = Math.max(360, Math.floor(sc.clientHeight - subH - 14)) + 'px';
+            if (scroll && sub) sc.scrollTop += sub.getBoundingClientRect().top - sc.getBoundingClientRect().top - 4;
+        }
+        window.addEventListener('resize', () => cbFit(false));
         function closeCustomPane() {
             if (!_cbOn) return;
             _cbOn = false; document.body.classList.remove('cb-on');
