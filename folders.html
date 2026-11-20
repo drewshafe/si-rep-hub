@@ -92,6 +92,14 @@
   .err { color:var(--danger); font-size:12.5px; min-height:16px; }
   .logo-pick { display:flex; align-items:center; gap:10px; }
 
+  /* One-Pager editor, opened over the folder */
+  .op-ov { position:fixed; inset:0; z-index:55; background:rgba(14,16,40,.5); display:flex; padding:12px; }
+  .op-box { flex:1; min-width:0; display:flex; flex-direction:column; background:var(--card); color:var(--ink); border-radius:14px; overflow:hidden; box-shadow:0 24px 70px rgba(0,0,0,.35); }
+  .op-hd { display:flex; align-items:center; gap:10px; padding:9px 12px 9px 16px; border-bottom:1px solid var(--line); font-size:14px; font-weight:800; }
+  .op-hd .t { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .op-hd .t span { font-weight:600; color:var(--muted); }
+  .op-box iframe { flex:1; width:100%; border:0; background:var(--page); }
+
   .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(90px); background:#222; color:#fff; font-weight:600; font-size:13px; padding:10px 16px; border-radius:8px; transition:transform .25s; z-index:60; }
   .toast.show { transform:translateX(-50%) translateY(0); }
 
@@ -198,7 +206,7 @@
     { kind: 'claim',    label: 'Claim Wizard',         tool: 'Claim Wizard' },
     { kind: 'onepager', label: 'One-Pagers',           tool: 'One-Pager' },
     { kind: 'faq',      label: 'FAQs',                 tool: 'FAQ' },
-    { kind: 'lightbox', label: 'Info Lightboxes',      tool: 'Info Lightbox' },
+    { kind: 'lightbox', label: 'Info Lightboxes',      tool: 'Checkout Experience' },
     { kind: 'demo',     label: 'Interactive Demos',    tool: 'SI Interactive Demo' },
   ];
   // Sections where a rep can also file an existing document (upload or link) instead of generating one.
@@ -298,8 +306,9 @@
       const rows = it[s.kind];
       return '<h3>' + (b.icon || b.emoji ? iconOf(b) + ' ' : '') + esc(b.title || s.label) + (rows.length ? ' <span class="n">' + rows.length + '</span>' : '') +
         (DOC_KINDS[s.kind] ? '<span class="docacts"><button class="btn small" type="button" data-act="upload" title="' + (MOCKUP_KINDS[s.kind] ? 'Upload an existing mockup (PDF or image)' : 'Upload an existing PDF or Word file') + '">⬆ Upload</button><button class="btn small" type="button" data-act="addlink" title="' + (MOCKUP_KINDS[s.kind] ? 'File a link to an existing mockup (e.g. Figma)' : 'File a link to an existing doc (e.g. Google Doc)') + '">🔗 Add link</button>' +
-          (s.kind === 'onepager' ? '<button class="btn small primary" type="button" data-act="fathom" title="Paste a Fathom call, share or call-folder link: the One-Pager drafts a meeting recap from the call and saves it here">🎙 From Fathom call</button>' : '') + '</span>' : '') + '</h3>' +
-        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (s.kind === 'onepager' ? 'draft one from a Fathom call (🎙), build one in the One-Pager tab, or upload / link an existing doc.' : MOCKUP_KINDS[s.kind] ? 'save from the ' + esc(s.tool) + ' tab, or upload / link an existing mockup.' : DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : (s.kind === 'roi' ? 'save from the ' + esc(s.tool) + ' tab, or paste a calc link below.' : 'save from the ' + esc(s.tool) + ' tab.')) + '</div>') +
+          (s.kind === 'onepager' ? '<button class="btn small primary" type="button" data-act="fathom" title="Paste a Fathom call, share or call-folder link: the One-Pager drafts a meeting recap from the call and saves it here">🎙 From Fathom call</button>' +
+            '<button class="btn small primary" type="button" data-act="opnew" title="Build a one-pager for this merchant from its deal data">+ New one-pager</button>' : '') + '</span>' : '') + '</h3>' +
+        (rows.length ? rows.map(r => rowHtml(s, r)).join('') : '<div class="none">Nothing saved yet — ' + (s.kind === 'onepager' ? 'start one with + New one-pager, draft one from a Fathom call (🎙), or upload / link an existing doc.' : MOCKUP_KINDS[s.kind] ? 'save from the ' + esc(s.tool) + ' tab, or upload / link an existing mockup.' : DOC_KINDS[s.kind] ? 'generate one in the ' + esc(s.tool) + ' tab, or upload / link an existing doc.' : (s.kind === 'roi' ? 'save from the ' + esc(s.tool) + ' tab, or paste a calc link below.' : 'save from the ' + esc(s.tool) + ' tab.')) + '</div>') +
         (s.kind === 'roi' && rows.length ? '<div class="optbar' + (picks.length ? ' on' : '') + '"><span class="hint">Tick scenarios in the order you want their tabs</span>' +
           '<button class="btn small primary" type="button" data-act="optcopy">📋 Copy ' + (picks.length > 1 ? 'options link (' + picks.length + ')' : 'link') + '</button>' +
           '<button class="btn small" type="button" data-act="optopen" title="Open in a new window">↗</button></div>' : '') +
@@ -662,6 +671,7 @@
     if (b.dataset.act === 'optopen' && picks.length) { window.open(optLink(), '_blank', 'noopener'); return; }
     if (b.dataset.act === 'upload' || b.dataset.act === 'addlink') return addDoc(b.closest('[data-sec]').dataset.sec, b.dataset.act);
     if (b.dataset.act === 'fathom') return onePagerFromCall();
+    if (b.dataset.act === 'opnew') return openOnePager({});
     if (b.dataset.act === 'roisave') return saveRoiLink(b);
     const row = b.closest('.row'), kind = row.dataset.kind, id = row.dataset.id;
     if (b.dataset.act === 'pick') {
@@ -686,6 +696,7 @@
       // Loading from a folder makes it the active merchant, then the Hub opens the right tab.
       if (f) SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path });
       if (kind === 'roi') hub({ type: 'openScenario', id: id });
+      else if (kind === 'onepager') { openOnePager({ asset: id }); return; }   // edits here, over the folder
       else hub({ type: 'openAsset', kind: kind, id: id });
       if (parent === window) toast('Open the Rep Hub to load saves into its tabs');
       return;
@@ -761,9 +772,46 @@
     } catch (x) { btn.disabled = false; toast('Couldn’t save it: ' + (x.message || x)); }
   }
 
-  // ── One-Pager from a Fathom call: a call, share or call-folder link. The One-Pager tab reads the
-  // call (fathom-call function), drafts the meeting recap with Claude and saves it to this folder. ──
+  // ── One-Pager editor: opens over this folder (it is not a Rep Hub tab). The folder is passed in the
+  // URL as well as set active, so the editor files every save here. ──
   const ONEPAGER = 'https://drewshafe.github.io/si-widget-designer/onepager.html';
+  function openOnePager(params) {
+    const f = folders.find(x => x.id === (params.folder || openId)) || null;
+    if (f) SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path });
+    const u = new URL(ONEPAGER);
+    if (f) { u.searchParams.set('folder', f.id); u.searchParams.set('fname', f.name || ''); }
+    ['asset', 'fathom', 'domain'].forEach(k => { if (params[k]) u.searchParams.set(k, params[k]); });
+    if (document.body.classList.contains('pm')) u.searchParams.set('theme', 'midnight');
+    closeOnePager(true);
+    const ov = document.createElement('div'); ov.className = 'op-ov'; ov.id = 'opOv';
+    ov.innerHTML = '<div class="op-box" role="dialog" aria-label="One-Pager"><div class="op-hd"><div class="t">📄 One-Pager' + (f ? ' <span>· ' + esc(f.name) + '</span>' : '') + '</div>' +
+      '<button class="btn small" type="button" data-opx>Close</button></div><iframe title="One-Pager editor" allow="clipboard-write"></iframe></div>';
+    ov.querySelector('iframe').src = u.toString();
+    ov.querySelector('[data-opx]').addEventListener('click', () => closeOnePager());
+    document.body.appendChild(ov);
+  }
+  // A request can arrive while this page is still loading its folders: run it once they're in.
+  let _opReady = false, _opPending = null;
+  function hubOnePager(d) {
+    if (d.folder && folders.some(x => x.id === d.folder) && openId !== d.folder) showFolder(d.folder);
+    openOnePager({ folder: d.folder, asset: d.asset, fathom: d.fathom, domain: d.domain });
+  }
+  function opReady() { _opReady = true; if (_opPending) { const d = _opPending; _opPending = null; hubOnePager(d); } }
+  // Closing keeps the browser draft; the folder re-reads its saves so a new one shows in One-Pagers.
+  function closeOnePager(quiet) {
+    const ov = $('opOv'); if (!ov) return;
+    ov.remove();
+    if (!quiet) loadAll().then(() => openId ? renderDetail() : renderList()).catch(() => {});
+  }
+  // The editor's folder bar asks for the Folders tab (to pick a merchant): that's right here.
+  window.addEventListener('message', e => {
+    const d = e.data || {}, ov = $('opOv'), fr = ov && ov.querySelector('iframe');
+    if (fr && e.source === fr.contentWindow && d.siHub === 'folders' && d.type === 'goto') { closeOnePager(); return; }
+    // From the Rep Hub: open a saved one-pager, or draft one from a Fathom call, in this folder.
+    if (d.siHub === 'onepager' && e.source === parent) { _opReady ? hubOnePager(d) : (_opPending = d); }
+    // Theme changes reach the editor too
+    if (d.siHub === 'apply' && fr) { try { fr.contentWindow.postMessage(d, '*'); } catch (x) {} }
+  });
   const FATHOM_RE = /^(https?:\/\/)?([\w-]+\.)?fathom\.(video|ai)\/(calls|share|folders)\/[\w-]+/i;
   function onePagerFromCall() {
     const f = folders.find(x => x.id === openId); if (!f) return;
@@ -772,9 +820,7 @@
     if (!FATHOM_RE.test(url)) { toast('That isn’t a Fathom call, share or folder link'); return; }
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
     if (/\/folders\//i.test(url) && !f.domain) { toast('Add ' + f.name + '’s store URL (✎ Edit folder) so its Fathom calls can be found'); return; }
-    SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path });
-    if (parent !== window) { hub({ type: 'openOnePagerCall', url: url, domain: f.domain || '' }); return; }
-    window.open(ONEPAGER + '?fathom=' + encodeURIComponent(url) + (f.domain ? '&domain=' + encodeURIComponent(f.domain) : ''), '_blank', 'noopener');
+    openOnePager({ fathom: url, domain: f.domain || '' });
   }
 
   // File an existing Proposal / MSA / MNDA (PDF/Word) or Checkout / Email / Claim mockup (PDF/image) — upload or paste a link.
@@ -931,12 +977,13 @@
     $('acct').innerHTML = user ? esc(user.email) + ' · <button class="btn small ghost" type="button" id="soBtn">Sign out</button>' : '';
     if (user) $('soBtn').onclick = async () => { await SIsb.signOut(); location.reload(); };
     $('newBtn').hidden = !user;
-    if (!user) { $('signin').hidden = false; return; }
+    if (!user) { $('signin').hidden = false; opReady(); return; }
     loadLayoutSettings();
     try { await loadAll(); }
-    catch (x) { $('listView').hidden = false; $('grid').innerHTML = '<div class="empty" style="grid-column:1/-1"><b>Couldn’t load folders</b>' + esc(x.message || x) + '</div>'; return; }
+    catch (x) { $('listView').hidden = false; $('grid').innerHTML = '<div class="empty" style="grid-column:1/-1"><b>Couldn’t load folders</b>' + esc(x.message || x) + '</div>'; opReady(); return; }
     const want = (location.hash.match(/f=([\w-]+)/) || [])[1];
     want && folders.some(f => f.id === want) ? showFolder(want) : showList();
+    opReady();
   }
 
   // Active merchant changed elsewhere (another tab or the Hub chip) → repaint.

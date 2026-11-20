@@ -813,16 +813,13 @@
             // Custom Build is reached from the ROI tab's "Custom" sub-tab, not the nav.
             { id: 'custom-build', emoji: '🛠️', name: 'Custom Build', url: 'https://drewshafe.github.io/si-roi-calculator/custom-build.html', hidden: true },
             // "Preview Designer" is a group header — clicking it reveals its sub-tabs below.
-            { id: 'preview',      emoji: '🎨', logo: 'previewdesigner_logo.png', logoLight: 'previewdesigner_logo_light.png', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard', 'one-pager', 'faq', 'info-lightbox', 'si-demo'] },
+            { id: 'preview',      emoji: '🎨', logo: 'previewdesigner_logo.png', logoLight: 'previewdesigner_logo_light.png', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard', 'faq', 'si-demo'] },
             { id: 'widget-designer',   emoji: '🛒', logo: 'checkoutexp_logo.png',   logoLight: 'checkoutexp_logo.png',   name: 'Checkout Experience', url: 'https://drewshafe.github.io/si-widget-designer/',   parent: 'preview' },
             { id: 'email-automation',  emoji: '✉️', logo: 'emailbranding_logo.png',  logoLight: 'emailbranding_logo.png',  name: 'Email Automation',    url: 'https://drewshafe.github.io/si-email-automation/', parent: 'preview' },
             { id: 'claim-wizard',      emoji: '🪄', logo: 'claimwiz_logo.png',       logoLight: 'claimwiz_logo.png',       name: 'Claim Wizard',        url: 'https://drewshafe.github.io/si-claim-wizard/',     parent: 'preview' },
-            // One-Pager ("Deal Doc"): the post-meeting draft-order one-pager, filled from the deal (Brand Folder + rep), exported as a Letter PDF.
-            { id: 'one-pager',         emoji: '📄', name: 'One-Pager', url: 'https://drewshafe.github.io/si-widget-designer/onepager.html', parent: 'preview' },
+            // One-Pager is not a tab: it opens inside Brand Folders → One-Pagers (folders.html).
             // FAQ: the merchant's FAQ page with ShipInsure's shipping-protection Q&A added, styled like their page.
             { id: 'faq',               emoji: '❓', name: 'FAQ', url: 'https://drewshafe.github.io/si-widget-designer/faq.html', parent: 'preview' },
-            // Info Lightbox: the modal behind the widget's ⓘ (Merchant Portal widget-config → Modal), cart widgets + Checkout Extension.
-            { id: 'info-lightbox',     emoji: 'ℹ️', name: 'Info Lightbox', url: 'https://drewshafe.github.io/si-widget-designer/lightbox.html', parent: 'preview' },
             // SI Interactive Demo: the whole shopper journey on a phone, from what was made for the merchant (cart/checkout + ⓘ → emails → claims → FAQ).
             { id: 'si-demo',           emoji: '📱', name: 'SI Interactive Demo', url: 'https://drewshafe.github.io/si-widget-designer/demo.html', parent: 'preview' },
             // Gorgias Calculator: off by default (the "Other Calculators" group is retired);
@@ -836,7 +833,16 @@
         // "Proposal" sub-tab (stacked view), so it stays in TOOLS.
         const LAYOUT_KEY = 'si_hub_layout';
         const DEFAULT_LAYOUT = () => ({ order: ['folders', 'roi', 'vault', 'preview', 'proposal', 'gorgias'], foldersSeeded: true, off: ['proposal', 'gorgias'], custom: [], look: {},
-                                        kids: { preview: ['widget-designer', 'email-automation', 'claim-wizard', 'one-pager', 'faq', 'info-lightbox', 'si-demo'] } });
+                                        kids: { preview: ['widget-designer', 'email-automation', 'claim-wizard', 'faq', 'si-demo'] } });
+        // Retired tabs: dropped from saved and team layouts (One-Pager moved into Brand Folders → One-Pagers).
+        const RETIRED = ['one-pager'];
+        function dropRetired(L) {
+            if (!L) return L;
+            ['order', 'off'].forEach(k => { if (Array.isArray(L[k])) L[k] = L[k].filter(id => !RETIRED.includes(id)); });
+            Object.keys(L.kids || {}).forEach(g => { if (Array.isArray(L.kids[g])) L.kids[g] = L.kids[g].filter(id => !RETIRED.includes(id)); });
+            if (L.look) RETIRED.forEach(id => { delete L.look[id]; });
+            return L;
+        }
         // ── Team default: a hub admin's layout, published from ⚙ Customize tabs (Supabase hub_settings) ──
         // Cached here. It's every rep's starting point, and whenever a newer one is published it
         // replaces the rep's tabs; tabs a rep added for themselves are kept.
@@ -852,7 +858,7 @@
             L.custom = (L.custom || []).map(c => Object.assign(c, { team: true })).concat(own);
             own.forEach(c => { if (((mine.look || {})[c.id])) L.look[c.id] = mine.look[c.id]; });
             L.off = (L.off || []).concat(((mine && mine.off) || []).filter(id => ownIds.has(id)));
-            return L;
+            return dropRetired(L);
         }
         const baseLayout = () => team ? withTeam(null, team) : DEFAULT_LAYOUT();
         let layout = (() => {
@@ -867,6 +873,7 @@
             return Object.assign(DEFAULT_LAYOUT(), mine);
         })();
         if (!layout.look) layout.look = {};
+        { const was = JSON.stringify(layout); dropRetired(layout); if (JSON.stringify(layout) !== was) try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) {} }
         // Reps who customized their tabs before Merchant Folders existed get it at the top once.
         if (!layout.foldersSeeded) {
             layout.order = ['folders'].concat((layout.order || []).filter(id => id !== 'folders'));
@@ -1864,7 +1871,18 @@
         function _pmActive() { return document.body.classList.contains('pm'); }
         function _withTheme(url) { return _pmActive() ? url + (url.includes('?') ? '&' : '?') + 'theme=midnight' : url; }
         // ── Merchant Folders: active-merchant chip + Load requests from the Folders tab ──
-        const FOLDER_KIND_TOOL = { checkout: 'widget-designer', email: 'email-automation', claim: 'claim-wizard', onepager: 'one-pager', faq: 'faq', lightbox: 'info-lightbox', demo: 'si-demo', proposal: 'proposal', msa: 'proposal', mnda: 'proposal' };
+        const FOLDER_KIND_TOOL = { checkout: 'widget-designer', email: 'email-automation', claim: 'claim-wizard', faq: 'faq', lightbox: 'widget-designer', demo: 'si-demo', proposal: 'proposal', msa: 'proposal', mnda: 'proposal' };
+        // The One-Pager editor lives in Brand Folders: open the Folders tab and hand it the request
+        // (once its page has loaded, if this is its first visit).
+        function onePagerInFolder(msg) {
+            activate('folders');
+            const f = frames.folders; if (!f) return;
+            const a = window.SIsb ? SIsb.getActiveFolder() : null;
+            const send = () => { try { f.contentWindow.postMessage(Object.assign({ siHub: 'onepager', folder: a ? a.id : '' }, msg), '*'); } catch (e) {} };
+            let loaded = false;
+            try { loaded = f.contentDocument && f.contentDocument.readyState === 'complete' && f.contentWindow.location.href !== 'about:blank'; } catch (e) {}
+            loaded ? send() : f.addEventListener('load', send, { once: true });
+        }
         function paintActiveMerchant() {
             const a = window.SIsb ? SIsb.getActiveFolder() : null;
             const chip = document.getElementById('amChip'); if (!chip) return;
@@ -1890,15 +1908,9 @@
                 activate('roi');
                 if (frames.roi) frames.roi.src = 'https://drewshafe.github.io/si-roi-calculator/index.html?id=' + encodeURIComponent(d.id);
             }
-            // One-Pagers → 🎙 From Fathom call: the One-Pager drafts the recap from that call.
-            if (d.type === 'openOnePagerCall' && typeof d.url === 'string' && /^https:\/\/([\w-]+\.)?fathom\.(video|ai)\//i.test(d.url)) {
-                const tool = TOOLS.find(t => t.id === 'one-pager');
-                activate('one-pager');
-                if (frames['one-pager'] && tool) {
-                    const base = _withTheme(tool.url);
-                    frames['one-pager'].src = base + (base.includes('?') ? '&' : '?') + 'fathom=' + encodeURIComponent(d.url) + (d.domain ? '&domain=' + encodeURIComponent(String(d.domain)) : '');
-                }
-            }
+            // One-Pagers → 🎙 From Fathom call / a saved one-pager: the editor opens inside the Brand Folder.
+            if (d.type === 'openOnePagerCall' && typeof d.url === 'string' && /^https:\/\/([\w-]+\.)?fathom\.(video|ai)\//i.test(d.url)) onePagerInFolder({ fathom: d.url, domain: d.domain ? String(d.domain) : '' });
+            if (d.type === 'openAsset' && d.id && d.kind === 'onepager') onePagerInFolder({ asset: d.id });
             if (d.type === 'openAsset' && d.id && FOLDER_KIND_TOOL[d.kind]) {
                 const toolId = FOLDER_KIND_TOOL[d.kind], tool = TOOLS.find(t => t.id === toolId);
                 activate(toolId);
