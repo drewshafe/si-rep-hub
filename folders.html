@@ -66,6 +66,11 @@
   .row .rm { font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .none { font-size:12.5px; color:var(--muted); padding:4px 0 2px; }
   .sec h3 .docacts { margin-left:auto; display:flex; gap:6px; text-transform:none; letter-spacing:0; }
+  /* 📱 / 🖥: which view the save's link opens in (Demo, Lightbox, FAQ) */
+  .row .devseg { flex:0 0 auto; display:inline-flex; background:#f1f2f8; border-radius:20px; padding:2px; }
+  .row .devseg button { border:0; background:none; border-radius:20px; padding:3px 7px; font-size:12px; line-height:1; cursor:pointer; opacity:.45; }
+  .row .devseg button.on { background:#fff; opacity:1; box-shadow:0 1px 3px rgba(20,26,60,.15); }
+  body.pm .row .devseg { background:#1b1b22; } body.pm .row .devseg button.on { background:#2a2a33; }
   .row .pick { flex:0 0 auto; width:16px; height:16px; cursor:pointer; accent-color:var(--accent); }
   .row .ord { flex:0 0 auto; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#fff; font-size:11px; font-weight:800; display:none; align-items:center; justify-content:center; }
   .row .ord.on { display:inline-flex; }
@@ -300,6 +305,7 @@
     $('detailView').classList.toggle('editing', editing);
     $('editbar').innerHTML = editing ? editbarHtml() : '';
     $('sections').innerHTML = cur.blocks.map(b => blockHtml(b, it)).join('');
+    fillDevices();
   }
   // One built-in section's content (its saves, upload / link buttons, ROI tools).
   function sectionInner(s, it, b) {
@@ -314,6 +320,32 @@
           '<button class="btn small" type="button" data-act="optopen" title="Open in a new window">↗</button></div>' : '') +
         (s.kind === 'roi' ? '<div class="roiadd"><input class="roilink" type="url" placeholder="Paste an ROI calc link…" value="' + esc(roiDraft) + '" autocomplete="off">' +
           '<button class="btn small primary" type="button" data-act="roisave">Save link</button></div>' : '');
+  }
+  // Saves whose link opens on a phone or a desktop: the choice is saved in the save (data.device).
+  const DEV_KINDS = { demo: 1, lightbox: 1, faq: 1 };
+  const devOf = {};   // asset id → 'mobile' | 'desktop' (read from the save; their links open on mobile unless set)
+  const devSeg = r => '<span class="devseg" title="Opens on a phone or a desktop (saved with it)">' +
+    ['mobile', 'desktop'].map(v => '<button type="button" data-act="dev" data-v="' + v + '" title="' + (v === 'mobile' ? 'Opens on a phone' : 'Opens on a desktop') + '"' + (devOf[r.id] === v ? ' class="on"' : '') + '>' + (v === 'mobile' ? '📱' : '🖥') + '</button>').join('') + '</span>';
+  function fillDevices() {
+    document.querySelectorAll('#sections .row').forEach(row => {
+      if (!DEV_KINDS[row.dataset.kind] || !row.querySelector('.devseg')) return;
+      const id = row.dataset.id, paint = () => row.querySelectorAll('.devseg button').forEach(x => x.classList.toggle('on', x.dataset.v === devOf[id]));
+      if (devOf[id]) return paint();
+      SIsb.getAsset(id).then(a => { devOf[id] = ((a && a.data) || {}).device === 'desktop' ? 'desktop' : 'mobile'; paint(); }, () => {});
+    });
+  }
+  async function setDevice(row, v) {
+    const id = row.dataset.id, a = assets.find(x => x.id === id); if (!a) return;
+    const was = devOf[id]; devOf[id] = v;
+    row.querySelectorAll('.devseg button').forEach(x => x.classList.toggle('on', x.dataset.v === v));
+    try {
+      const full = await SIsb.getAsset(id), data = Object.assign({}, (full && full.data) || {}, { device: v });
+      await SIsb.saveAsset({ id, merchant_ref: a.merchant_ref, kind: a.kind, title: a.title || '', data });
+      toast('Saved: its link opens on ' + (v === 'mobile' ? 'a phone' : 'a desktop'));
+    } catch (x) {
+      devOf[id] = was; row.querySelectorAll('.devseg button').forEach(y => y.classList.toggle('on', y.dataset.v === was));
+      toast('Couldn’t save that: ' + (x.message || x));
+    }
   }
   function rowHtml(s, r) {
     if (s.kind === 'roi') {
@@ -334,6 +366,7 @@
     }
     return '<div class="row" data-kind="' + s.kind + '" data-id="' + esc(r.id) + '"><div class="rt"><div class="rn">' + esc(r.title || 'Untitled') + '</div>' +
       '<div class="rm">' + esc(who(r.updated_by_email || r.rep_email)) + ' · ' + esc(ago(r.updated_at)) + '</div></div>' +
+      (DEV_KINDS[s.kind] ? devSeg(r) : '') +
       '<button class="btn small ghost" type="button" data-act="rename" title="Rename">✎</button>' +
       '<button class="btn small primary" type="button" data-act="load">Load</button>' +
       (r.doc_url ? '<a class="btn small" href="' + esc(r.doc_url) + '" target="_blank" rel="noopener" title="Open the Google Doc">Doc ↗</a>' : '') +
@@ -680,6 +713,7 @@
       renderDetail(); return;
     }
     if (b.dataset.act === 'rename') return renameRow(row, kind, id);
+    if (b.dataset.act === 'dev') return setDevice(row, b.dataset.v);
     const f = folders.find(x => x.id === openId);
     if (b.dataset.act === 'opendoc') {
       const a = assets.find(x => x.id === id); if (!a) return;
