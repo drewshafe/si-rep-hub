@@ -6,6 +6,8 @@
 <title>Merchant Folders · ShipInsure Rep Hub</title>
 <link rel="icon" type="image/png" href="Rephubfavi.png">
 <script src="https://drewshafe.github.io/si-roi-calculator/sb.js"></script>
+<script src="brand-kit.js"></script>
+<script src="https://drewshafe.github.io/si-widget-designer/lock-builder.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   [hidden] { display:none !important; }
@@ -51,6 +53,24 @@
   /* folder detail */
   .back { font-size:13px; font-weight:600; color:var(--accent); background:none; border:none; cursor:pointer; margin-bottom:14px; }
   .dhead { display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
+  /* Brand kit: the merchant's reusable images (main / secondary / hero logo, favicon, banner, custom SI lock) */
+  .bkit { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:4px 18px; margin-bottom:16px; }
+  .bkit summary { cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; padding:12px 0; font-weight:800; font-size:14px; }
+  .bkit summary::-webkit-details-marker { display:none; }
+  .bkit summary::after { content:'▾'; margin-left:auto; color:var(--muted); transition:transform .15s; }
+  .bkit:not([open]) summary::after { transform:rotate(-90deg); }
+  .bkit summary .n { font-size:11.5px; font-weight:700; color:var(--muted); }
+  .bkit .bk-note { font-size:12px; color:var(--muted); margin:-4px 0 12px; }
+  .bkit .bk-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; padding-bottom:16px; }
+  .bk-t { border:1px solid var(--line); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .bk-pv { height:84px; border-radius:8px; background:repeating-conic-gradient(#eceef4 0% 25%, #f8f9fc 0% 50%) 0 0/12px 12px; display:flex; align-items:center; justify-content:center; overflow:hidden; color:var(--muted); font-size:22px; }
+  .bk-pv img { max-width:100%; max-height:100%; object-fit:contain; display:block; }
+  .bk-pv.wide img { width:100%; height:100%; object-fit:cover; }
+  .bk-l { font-size:12.5px; font-weight:700; }
+  .bk-h { font-size:11px; color:var(--muted); margin-top:-5px; }
+  .bk-a { display:flex; gap:5px; flex-wrap:wrap; }
+  .bk-a .btn { padding:4px 8px; font-size:11.5px; }
+  body.pm .bk-pv { background:repeating-conic-gradient(#1b1b22 0% 25%, #24242c 0% 50%) 0 0/12px 12px; }
   .dhead .logo { width:56px; height:56px; font-size:20px; border-radius:12px; }
   .dhead .dtitle { margin-right:auto; min-width:0; }
   .dhead h2 { font-size:20px; font-weight:800; }
@@ -192,6 +212,7 @@
   <div id="detailView" hidden>
     <button class="back" id="backBtn" type="button">← All folders</button>
     <div class="dhead" id="dhead"></div>
+    <details class="bkit" id="bkit"></details>
     <div id="editbar"></div>
     <div class="sections" id="sections"></div>
   </div>
@@ -299,6 +320,7 @@
       '<button class="btn" type="button" data-act="edit">✎ Edit details</button>' +
       '<button class="btn' + (editing ? ' primary' : '') + '" type="button" data-act="customize">' + (editing ? '✓ Done customizing' : '🎨 Customize') + '</button>' +
       '<button class="btn ' + (f.archived ? '' : 'danger') + '" type="button" data-act="archive">' + (f.archived ? 'Restore' : 'Archive') + '</button>';
+    renderKit(f);
     const it = itemsFor(f.id);
     if (!editing || curFor !== f.id || !cur) { cur = layoutOf(f.id); curFor = f.id; }
     $('dhead').style.background = cur.head.bg || ''; $('dhead').style.color = cur.head.ink || ''; $('dhead').classList.toggle('inked', !!cur.head.ink);
@@ -934,6 +956,71 @@
     }
   });
 
+  // ── Brand kit (brand-kit.js): six reusable images per merchant, used across the tools ──
+  const kits = {};   // folder id → kit (see SIBrand.get)
+  const BK_MAX = { main: 1200, secondary: 1200, hero: 1600, favicon: 256, banner: 2200, lock: 600 };
+  function renderKit(f) {
+    const el = $('bkit'); if (!el || !window.SIBrand) { if (el) el.hidden = true; return; }
+    const k = kits[f.id];
+    if (!k) { el.innerHTML = '<summary>🎨 Brand kit <span class="n">loading…</span></summary>'; SIBrand.get(f.id).then(v => { kits[f.id] = v; if (openId === f.id) renderKit(f); }, () => { kits[f.id] = { failed: true }; if (openId === f.id) renderKit(f); }); return; }
+    let open = true; try { open = localStorage.getItem('si_bkit_open') !== '0'; } catch (e) {}
+    el.open = open;
+    const n = SIBrand.SLOTS.filter(s => k[s.k]).length;
+    el.innerHTML = '<summary>🎨 Brand kit <span class="n">' + n + ' of ' + SIBrand.SLOTS.length + '</span></summary>' +
+      '<div class="bk-note">' + (k.needsSql ? esc(SIBrand.NEED_SQL) + '. Only the main logo saves until then.' : k.failed ? 'Couldn’t load the brand kit (sign in?).' : 'This merchant’s images, saved once and reused in every tool: lightboxes, one-pagers, emails and demos.') + '</div>' +
+      '<div class="bk-grid">' + SIBrand.SLOTS.map(s => {
+        const v = k[s.k] || '';
+        return '<div class="bk-t" data-bk="' + s.k + '"><div class="bk-pv' + (s.k === 'banner' ? ' wide' : '') + '">' + (v ? '<img src="' + esc(v) + '" alt="">' : (s.k === 'lock' ? '🔒' : '＋')) + '</div>' +
+          '<div class="bk-l">' + esc(s.label) + '</div><div class="bk-h">' + esc(s.hint) + '</div><div class="bk-a">' +
+          (s.k === 'lock' ? '<button class="btn small primary" type="button" data-bka="build" title="Their logo inside the ShipInsure lock">🔒 Build</button>' : '') +
+          '<button class="btn small" type="button" data-bka="up">⬆ ' + (v ? 'Replace' : 'Upload') + '</button>' +
+          (v ? '<button class="btn small ghost" type="button" data-bka="copy" title="Copy the image link">🔗</button><button class="btn small ghost" type="button" data-bka="del" title="Remove">✕</button>' : '') +
+          '</div></div>';
+      }).join('') + '</div><input type="file" id="bkFile" accept="image/*" hidden>';
+  }
+  function bkShrink(file, max) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => { const im = new Image(); im.onload = () => {
+        if (/svg/.test(file.type)) return res(r.result);
+        const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+        c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        const png = c.toDataURL('image/png'); res(png.length < 900000 ? png : c.toDataURL('image/jpeg', 0.88));
+      }; im.onerror = rej; im.src = r.result; };
+      r.onerror = rej; r.readAsDataURL(file);
+    });
+  }
+  async function bkSet(f, slot, v) {
+    try {
+      kits[f.id] = await SIBrand.set(f.id, slot, v);
+      if (slot === 'main') {
+        f.logo_path = kits[f.id].main || null;
+        const act = SIsb.getActiveFolder(); if (act && act.id === f.id) { SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path }); hub({ type: 'active' }); }
+      }
+      renderDetail(); toast(v ? 'Saved to the brand kit' : 'Removed from the brand kit');
+    } catch (x) { toast(x.message || String(x)); }
+  }
+  $('bkit').addEventListener('toggle', e => { try { localStorage.setItem('si_bkit_open', e.target.open ? '1' : '0'); } catch (x) {} });
+  $('bkit').addEventListener('click', async e => {
+    const b = e.target.closest('[data-bka]'); if (!b) return;
+    const f = folders.find(x => x.id === openId), slot = b.closest('[data-bk]').dataset.bk, k = kits[openId] || {};
+    if (!f) return;
+    if (b.dataset.bka === 'up') { const inp = $('bkFile'); inp.dataset.slot = slot; inp.click(); }
+    if (b.dataset.bka === 'del') { if (confirm('Remove the ' + SIBrand.SLOTS.find(s => s.k === slot).label.toLowerCase() + ' from ' + f.name + '’s brand kit?')) bkSet(f, slot, ''); }
+    if (b.dataset.bka === 'copy') { try { await navigator.clipboard.writeText(k[slot]); toast('Image link copied'); } catch (x) { prompt('Image link:', k[slot]); } }
+    if (b.dataset.bka === 'build') {
+      if (!window.SILockBuilder) return toast('The Lock builder didn’t load');
+      SILockBuilder.open({ logo: k.main || k.secondary || '', useLabel: '✓ Save to the brand kit', onUse: u => bkSet(f, 'lock', u) });
+    }
+  });
+  $('bkit').addEventListener('change', async e => {
+    if (e.target.id !== 'bkFile') return;
+    const file = e.target.files[0], slot = e.target.dataset.slot, f = folders.find(x => x.id === openId); e.target.value = '';
+    if (!file || !f) return;
+    try { bkSet(f, slot, await bkShrink(file, BK_MAX[slot] || 1200)); } catch (x) { toast('Couldn’t read that image'); }
+  });
+
   // ── create / edit folder ──
   function folderForm(f) {
     const dim = document.createElement('div');
@@ -981,6 +1068,7 @@
           if (name.toLowerCase() !== f.name.toLowerCase() && folders.some(x => x.id !== f.id && x.name.toLowerCase() === name.toLowerCase())) throw new Error('Another folder already uses that name.');
           saved = await SIsb.updateFolder(f.id, { name: name, domain: domain || null, logoUrl: logoUrl });
           Object.assign(f, saved);
+          if (kits[f.id]) kits[f.id].main = f.logo_path || '';
           const act = SIsb.getActiveFolder(); if (act && act.id === f.id) { SIsb.setActiveFolder({ id: f.id, name: f.name, logo_path: f.logo_path }); hub({ type: 'active' }); }
           close(); renderDetail(); toast('Folder updated');
         } else {
