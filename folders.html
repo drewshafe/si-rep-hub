@@ -1018,7 +1018,7 @@
   $('bkit').addEventListener('toggle', e => { try { localStorage.setItem('si_bkit_open', e.target.open ? '1' : '0'); } catch (x) {} });
   $('bkit').addEventListener('click', async e => {
     const b = e.target.closest('[data-bka]'); if (!b) return;
-    const f = folders.find(x => x.id === openId), slot = b.closest('[data-bk]').dataset.bk, k = kits[openId] || {};
+    const t = b.closest('[data-bk]'), f = folders.find(x => x.id === openId), slot = t ? t.dataset.bk : '', k = kits[openId] || {};
     if (!f) return;
     if (b.dataset.bka === 'up') { const inp = $('bkFile'); inp.dataset.slot = slot; inp.click(); }
     if (b.dataset.bka === 'del') { if (confirm('Remove the ' + SIBrand.SLOTS.find(s => s.k === slot).label.toLowerCase() + ' from ' + f.name + '’s brand kit?')) bkSet(f, slot, ''); }
