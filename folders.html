@@ -231,6 +231,7 @@
     { kind: 'proposal', label: 'Proposals',            tool: 'Proposal & MSA Generator' },
     { kind: 'msa',      label: 'MSA + SOW',            tool: 'Proposal & MSA Generator' },
     { kind: 'mnda',     label: 'MNDA',                 tool: 'Proposal & MSA Generator' },
+    { kind: 'deck',     label: 'Custom Decks',         tool: 'Custom Deck' },
     { kind: 'checkout', label: 'Checkout Experience',  tool: 'Checkout Experience' },
     { kind: 'email',    label: 'Email Automation',     tool: 'Email Automation' },
     { kind: 'claim',    label: 'Claim Wizard',         tool: 'Claim Wizard' },
@@ -243,10 +244,10 @@
   const DOC_KINDS = { proposal: 1, msa: 1, mnda: 1, checkout: 1, email: 1, claim: 1, onepager: 1 };
   // Of those, the tool sections file existing mockups (Figma exports, screenshots) — images allowed too.
   const MOCKUP_KINDS = { checkout: 1, email: 1, claim: 1 };
-  const SHORT = { roi: 'ROI', proposal: 'Proposal', msa: 'MSA', mnda: 'MNDA', checkout: 'Checkout', email: 'Email', claim: 'Claims', onepager: 'One-Pager', faq: 'FAQ', lightbox: 'Lightbox', demo: 'Demo' };
+  const SHORT = { roi: 'ROI', proposal: 'Proposal', msa: 'MSA', mnda: 'MNDA', checkout: 'Checkout', email: 'Email', claim: 'Claims', onepager: 'One-Pager', faq: 'FAQ', lightbox: 'Lightbox', demo: 'Demo', deck: 'Deck' };
   const CALC = 'https://drewshafe.github.io/si-roi-calculator/';
   // One-Pagers are filed as kind 'onepager'; until the hosted sb.js lists it, add it (same array saveAsset checks).
-  if (window.SIsb && Array.isArray(SIsb.ASSET_KINDS)) ['onepager', 'faq', 'lightbox', 'demo'].forEach(k => { if (SIsb.ASSET_KINDS.indexOf(k) < 0) SIsb.ASSET_KINDS.push(k); });
+  if (window.SIsb && Array.isArray(SIsb.ASSET_KINDS)) ['onepager', 'faq', 'lightbox', 'demo', 'deck'].forEach(k => { if (SIsb.ASSET_KINDS.indexOf(k) < 0) SIsb.ASSET_KINDS.push(k); });
 
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -962,7 +963,7 @@
 
   // ── Brand kit (brand-kit.js): six reusable images per merchant, used across the tools ──
   const kits = {};   // folder id → kit (see SIBrand.get)
-  const BK_MAX = { main: 1200, secondary: 1200, hero: 1600, favicon: 256, banner: 2200, lock: 600 };
+  const BK_MAX = { main: 1200, secondary: 1200, hero: 1600, favicon: 256, banner: 2200, lock: 600, lifestyle: 1800, product: 1600 };
   function renderKit(f) {
     const el = $('bkit'); if (!el || !window.SIBrand) { if (el) el.hidden = true; return; }
     const k = kits[f.id];
@@ -974,7 +975,7 @@
       '<div class="bk-note">' + (k.needsSql ? esc(SIBrand.NEED_SQL) + '. Only the main logo saves until then.' : k.failed ? 'Couldn’t load the brand kit (sign in?).' : 'This merchant’s images, saved once and reused in every tool: lightboxes, one-pagers, emails and demos.') + '</div>' +
       '<div class="bk-grid">' + SIBrand.SLOTS.map(s => {
         const v = k[s.k] || '';
-        return '<div class="bk-t" data-bk="' + s.k + '"><div class="bk-pv' + (s.k === 'banner' ? ' wide' : '') + '">' + (v ? '<img src="' + esc(v) + '" alt="">' : (s.k === 'lock' ? '🔒' : '＋')) + '</div>' +
+        return '<div class="bk-t" data-bk="' + s.k + '"><div class="bk-pv' + (s.k === 'banner' || s.k === 'lifestyle' ? ' wide' : '') + '">' + (v ? '<img src="' + esc(v) + '" alt="">' : (s.k === 'lock' ? '🔒' : '＋')) + '</div>' +
           '<div class="bk-l">' + esc(s.label) + '</div><div class="bk-h">' + esc(s.hint) + '</div><div class="bk-a">' +
           (s.k === 'lock' ? '<button class="btn small primary" type="button" data-bka="build" title="Their logo inside the ShipInsure lock">🔒 Build</button>' : '') +
           '<button class="btn small" type="button" data-bka="up">⬆ ' + (v ? 'Replace' : 'Upload') + '</button>' +

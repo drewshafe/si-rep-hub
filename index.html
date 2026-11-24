@@ -813,7 +813,9 @@
             // Custom Build is reached from the ROI tab's "Custom" sub-tab, not the nav.
             { id: 'custom-build', emoji: '🛠️', name: 'Custom Build', url: 'https://drewshafe.github.io/si-roi-calculator/custom-build.html', hidden: true },
             // "Preview Designer" is a group header — clicking it reveals its sub-tabs below.
-            { id: 'preview',      emoji: '🎨', logo: 'previewdesigner_logo.png', logoLight: 'previewdesigner_logo_light.png', name: 'Preview Designer', group: true, children: ['widget-designer', 'email-automation', 'claim-wizard', 'faq', 'si-demo'] },
+            { id: 'preview',      emoji: '🎨', logo: 'previewdesigner_logo.png', logoLight: 'previewdesigner_logo_light.png', name: 'Preview Designer', group: true, children: ['deck', 'widget-designer', 'email-automation', 'claim-wizard', 'faq', 'si-demo'] },
+            // Custom Deck: the ShipInsure custom deck template, filled from the merchant folder (brand kit, Checkout Experience save).
+            { id: 'deck',              emoji: '🗂️', name: 'Custom Deck', url: 'https://drewshafe.github.io/si-widget-designer/deck.html', parent: 'preview' },
             { id: 'widget-designer',   emoji: '🛒', logo: 'checkoutexp_logo.png',   logoLight: 'checkoutexp_logo.png',   name: 'Checkout Experience', url: 'https://drewshafe.github.io/si-widget-designer/',   parent: 'preview' },
             { id: 'email-automation',  emoji: '✉️', logo: 'emailbranding_logo.png',  logoLight: 'emailbranding_logo.png',  name: 'Email Automation',    url: 'https://drewshafe.github.io/si-email-automation/', parent: 'preview' },
             { id: 'claim-wizard',      emoji: '🪄', logo: 'claimwiz_logo.png',       logoLight: 'claimwiz_logo.png',       name: 'Claim Wizard',        url: 'https://drewshafe.github.io/si-claim-wizard/',     parent: 'preview' },
@@ -833,7 +835,7 @@
         // "Proposal" sub-tab (stacked view), so it stays in TOOLS.
         const LAYOUT_KEY = 'si_hub_layout';
         const DEFAULT_LAYOUT = () => ({ order: ['folders', 'roi', 'vault', 'preview', 'proposal', 'gorgias'], foldersSeeded: true, off: ['proposal', 'gorgias'], custom: [], look: {},
-                                        kids: { preview: ['widget-designer', 'email-automation', 'claim-wizard', 'faq', 'si-demo'] } });
+                                        kids: { preview: ['deck', 'widget-designer', 'email-automation', 'claim-wizard', 'faq', 'si-demo'] } });
         // Retired tabs: dropped from saved and team layouts (One-Pager moved into Brand Folders → One-Pagers).
         const RETIRED = ['one-pager'];
         function dropRetired(L) {
@@ -922,7 +924,10 @@
         const kidTools = g => {
             const kids = TOOLS.filter(t => t.parent === g.id && !t.hidden);
             const known = ((layout.kids || {})[g.id] || []).map(id => kids.find(t => t.id === id)).filter(Boolean);
-            return known.concat(kids.filter(t => !known.includes(t)));
+            // A sub-tab the saved layout doesn't know yet goes where it sits in TOOLS (before the next one it knows).
+            const out = known.slice();
+            kids.forEach((t, i) => { if (out.includes(t)) return; const nx = kids.slice(i + 1).find(x => out.includes(x)); out.splice(nx ? out.indexOf(nx) : out.length, 0, t); });
+            return out;
         };
 
         const nav = document.getElementById('nav');
@@ -1871,7 +1876,7 @@
         function _pmActive() { return document.body.classList.contains('pm'); }
         function _withTheme(url) { return _pmActive() ? url + (url.includes('?') ? '&' : '?') + 'theme=midnight' : url; }
         // ── Merchant Folders: active-merchant chip + Load requests from the Folders tab ──
-        const FOLDER_KIND_TOOL = { checkout: 'widget-designer', email: 'email-automation', claim: 'claim-wizard', faq: 'faq', lightbox: 'widget-designer', demo: 'si-demo', proposal: 'proposal', msa: 'proposal', mnda: 'proposal' };
+        const FOLDER_KIND_TOOL = { deck: 'deck', checkout: 'widget-designer', email: 'email-automation', claim: 'claim-wizard', faq: 'faq', lightbox: 'widget-designer', demo: 'si-demo', proposal: 'proposal', msa: 'proposal', mnda: 'proposal' };
         // The One-Pager editor lives in Brand Folders: open the Folders tab and hand it the request
         // (once its page has loaded, if this is its first visit).
         function onePagerInFolder(msg) {

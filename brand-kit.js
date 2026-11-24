@@ -1,7 +1,7 @@
 /* Brand kit — each merchant folder's reusable images, shared by every Rep Hub tool.
  *
  *   main       merchants.logo_path (the folder's logo)
- *   secondary, hero, favicon, banner, lock   merchants.brand (jsonb; needs si-rep-hub/brand-kit.sql)
+ *   secondary, hero, favicon, banner, lifestyle, product, lock   merchants.brand (jsonb; needs si-rep-hub/brand-kit.sql)
  *
  * Images are public URLs in the 'logos' bucket (SIsb.uploadLogo), so tools can copy them into saves.
  *
@@ -23,6 +23,8 @@
     { k: 'hero',      label: 'Hero logo',      hint: 'Large logo for heroes' },
     { k: 'favicon',   label: 'Favicon',        hint: 'Square icon' },
     { k: 'banner',    label: 'Banner',         hint: 'Wide banner image' },
+    { k: 'lifestyle', label: 'Lifestyle photo', hint: 'Their products in use (decks)' },
+    { k: 'product',   label: 'Product photo',  hint: 'A hero product shot (decks)' },
     { k: 'lock',      label: 'Custom SI lock', hint: 'Their logo in the ShipInsure lock' }
   ];
   const EXTRA = SLOTS.filter(s => s.k !== 'main').map(s => s.k);
@@ -35,7 +37,7 @@
     return dataUrl;
   }
   async function get(id) {
-    const out = { main: '', secondary: '', hero: '', favicon: '', banner: '', lock: '' };
+    const out = { main: '', secondary: '', hero: '', favicon: '', banner: '', lifestyle: '', product: '', lock: '' };
     if (!id || !window.SIsb) return out;
     const c = await SIsb.client();
     let r = await c.from('merchants').select('logo_path, brand, bld, cb').eq('id', id).single();
