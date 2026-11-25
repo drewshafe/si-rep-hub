@@ -90,6 +90,27 @@
   .row .rm { font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .none { font-size:12.5px; color:var(--muted); padding:4px 0 2px; }
   .sec h3 .docacts { margin-left:auto; display:flex; gap:6px; text-transform:none; letter-spacing:0; }
+  /* ▾ collapsible blocks */
+  #detailView:not(.editing) .blk > h3 { cursor:pointer; user-select:none; }
+  .sec h3 .bcol { margin-left:auto; flex:0 0 auto; width:24px; height:24px; border:0; background:none; color:var(--muted); font-size:14px; line-height:1; border-radius:6px; cursor:pointer; transition:transform .15s; }
+  .sec h3 .docacts + .bcol { margin-left:2px; }
+  .sec h3 .docacts { flex-wrap:wrap; justify-content:flex-end; min-width:0; }
+  .sec h3 .bcol:hover { background:var(--accent-soft); color:var(--accent); }
+  .blk.collapsed > h3 { margin-bottom:0; }
+  .blk.collapsed > h3 .bcol { transform:rotate(-90deg); }
+  .blk.collapsed > :not(h3) { display:none; }
+  /* 📋 Brief */
+  .brief .br-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px 14px; padding-bottom:12px; }
+  .brief .br-f { display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .brief .br-f.wide { grid-column:1 / -1; }
+  .brief .br-f span { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  .brief textarea, .brief .br-hs input { width:100%; font-family:inherit; font-size:13px; line-height:1.45; color:var(--ink); box-sizing:border-box; background:var(--page); border:1px solid var(--line); border-radius:8px; padding:7px 9px; resize:vertical; min-height:38px; }
+  .brief textarea:focus, .brief .br-hs input:focus { outline:2px solid var(--accent); outline-offset:-1px; border-color:transparent; }
+  .brief .br-hs { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding-bottom:6px; }
+  .brief .br-hs input { flex:1 1 260px; min-height:0; width:auto; }
+  .brief .br-st { display:flex; gap:10px; flex-wrap:wrap; font-size:11.5px; color:var(--muted); padding-bottom:14px; min-height:14px; }
+  .brief .br-st a { color:var(--accent); text-decoration:none; }
+  @media (max-width:640px) { .brief .br-grid { grid-template-columns:1fr; } }
   /* 📱 / 🖥: which view the save's link opens in (Demo, Lightbox, FAQ) */
   .row .devseg { flex:0 0 auto; display:inline-flex; background:#f1f2f8; border-radius:20px; padding:2px; }
   .row .devseg button { border:0; background:none; border-radius:20px; padding:3px 7px; font-size:12px; line-height:1; cursor:pointer; opacity:.45; }
@@ -217,6 +238,7 @@
     <button class="back" id="backBtn" type="button">← All folders</button>
     <div class="dhead" id="dhead"></div>
     <details class="bkit" id="bkit"></details>
+    <details class="bkit brief" id="brief"></details>
     <div id="editbar"></div>
     <div class="sections" id="sections"></div>
   </div>
@@ -326,6 +348,7 @@
       '<button class="btn' + (editing ? ' primary' : '') + '" type="button" data-act="customize">' + (editing ? '✓ Done customizing' : '🎨 Customize') + '</button>' +
       '<button class="btn ' + (f.archived ? '' : 'danger') + '" type="button" data-act="archive">' + (f.archived ? 'Restore' : 'Archive') + '</button>';
     renderKit(f);
+    renderBrief(f);
     const it = itemsFor(f.id);
     if (!editing || curFor !== f.id || !cur) { cur = layoutOf(f.id); curFor = f.id; }
     $('dhead').style.background = cur.head.bg || ''; $('dhead').style.color = cur.head.ink || ''; $('dhead').classList.toggle('inked', !!cur.head.ink);
@@ -538,12 +561,24 @@
     return head + (editing ? '<input class="bfield" data-bf="url" value="' + esc(b.url || '') + '" placeholder="Paste a Loom, Figma, YouTube or Google Docs / Slides link" style="margin-bottom:8px">' : '') +
       (src ? '<iframe class="bembed" src="' + esc(src) + '" style="height:' + (b.h || 380) + 'px" loading="lazy" allowfullscreen sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"></iframe>' : '<div class="none">Paste a link to embed it here.</div>');
   }
+  // ▾ Every block collapses to its title bar, like the Brand kit. Remembered per block in this browser
+  // (same block ids across folders, so "keep MNDA collapsed" sticks everywhere). Editing shows them all.
+  const COL_KEY = 'si_blk_collapsed';
+  const collapsedSet = () => { try { return new Set(JSON.parse(localStorage.getItem(COL_KEY) || '[]')); } catch (e) { return new Set(); } };
+  function toggleCollapsed(id) {
+    const c = collapsedSet(); c.has(id) ? c.delete(id) : c.add(id);
+    try { localStorage.setItem(COL_KEY, JSON.stringify([...c])); } catch (e) {}
+    return c.has(id);
+  }
   function blockHtml(b, it) {
     if (b.hidden && !editing) return '';
     const s = b.type === 'section' && SECTIONS.find(x => x.kind === b.id);
     const style = (b.bg ? 'background:' + b.bg + ';' + inksFor(b.bg) : '') + (b.ink ? '--blk-ink:' + b.ink + ';' : '');
-    return '<div class="sec blk w' + b.w + (b.hidden ? ' is-hidden' : '') + '" data-bid="' + esc(b.id) + '"' + (s ? ' data-sec="' + s.kind + '"' : '') + (style ? ' style="' + esc(style) + '"' : '') + '>' +
-      (editing ? toolsHtml(b) : '') + (s ? sectionInner(s, it, b) : customInner(b)) + (editing && styling === b.id ? styleHtml(b) : '') + '</div>';
+    const col = !editing && collapsedSet().has(b.id);
+    let inner = s ? sectionInner(s, it, b) : customInner(b);
+    if (!editing) inner = inner.replace('</h3>', '<button class="bcol" type="button" data-bcol title="' + (col ? 'Expand' : 'Collapse') + '" aria-expanded="' + !col + '">▾</button></h3>');
+    return '<div class="sec blk w' + b.w + (b.hidden ? ' is-hidden' : '') + (col ? ' collapsed' : '') + '" data-bid="' + esc(b.id) + '"' + (s ? ' data-sec="' + s.kind + '"' : '') + (style ? ' style="' + esc(style) + '"' : '') + '>' +
+      (editing ? toolsHtml(b) : '') + inner + (editing && styling === b.id ? styleHtml(b) : '') + '</div>';
   }
   // A card with its own background gets text that reads on it, in either theme.
   function inksFor(bg) {
@@ -610,6 +645,15 @@
     cur.head[k] = e.target.value; $('dhead').style.background = cur.head.bg || ''; $('dhead').style.color = cur.head.ink || ''; $('dhead').classList.toggle('inked', !!cur.head.ink); queueSave();
   });
 
+  // ▾ Collapse / expand: the chevron, or a click on the title bar itself (not its buttons or links).
+  $('sections').addEventListener('click', e => {
+    if (editing) return;
+    const h = e.target.closest('.blk > h3'); if (!h) return;
+    if (!e.target.closest('[data-bcol]') && e.target.closest('button, a, input, select, label')) return;
+    const blk = h.parentNode, col = toggleCollapsed(blk.dataset.bid);
+    blk.classList.toggle('collapsed', col);
+    const btn = h.querySelector('[data-bcol]'); if (btn) { btn.title = col ? 'Expand' : 'Collapse'; btn.setAttribute('aria-expanded', String(!col)); }
+  });
   // Block toolbars + edits.
   $('sections').addEventListener('click', e => {
     const btn = e.target.closest('[data-bact]'); if (!btn || !editing) return;
@@ -1047,6 +1091,125 @@
     if (!file || !f) return;
     try { bkSet(f, slot, await bkShrink(file, BK_MAX[slot] || 1200)); } catch (x) { toast('Couldn’t read that image'); }
   });
+
+  // ── 📋 Brief: the merchant's call-prep facts, saved on the folder (merchants.brand.brief) so the
+  // whole team sees them. Skills (demo-booked-recon, prep-call) fill the fields; reps edit them here.
+  // ⤴ HubSpot posts the brief as a note on the deal through the hubspot-note function (the HubSpot
+  // token stays server-side). ──
+  const BRIEF_FIELDS = [
+    ['tldr', 'TL;DR', 'The one thing to know going in'],
+    ['products', 'Products', 'What they sell, price points, bestsellers'],
+    ['operations', 'Operations', 'Warehouse / 3PL, shipping, returns, channels'],
+    ['size', 'Size', 'Employees, revenue, order volume'],
+    ['apps', 'Apps found', 'Protection, returns, helpdesk, reviews, cart…'],
+    ['contact', 'Contact', 'Who we’re meeting: role, tenure, LinkedIn'],
+    ['people', 'People we know', 'Connections, ShipInsure brand ties'],
+    ['history', 'History', 'Prior touches, calls, deals, lead source']
+  ];
+  const SB_FN = 'https://oiljklutlmtztascnkpm.supabase.co/functions/v1/';
+  const briefs = {};   // folder id → brief ({} when empty)
+  let briefT = 0, briefStatus = '', briefFor = null;   // briefFor: the folder whose edits are pending
+  async function briefLoad(id) {
+    const c = await SIsb.client();
+    const r = await c.from('merchants').select('brand').eq('id', id).single();
+    if (r.error) throw r.error;
+    return ((r.data && r.data.brand) || {}).brief || {};
+  }
+  async function briefSave(id, patch) {
+    const c = await SIsb.client();
+    const r = await c.from('merchants').select('brand').eq('id', id).single();
+    if (r.error) throw r.error;
+    const brand = Object.assign({}, (r.data && r.data.brand) || {});
+    let me = ''; try { const u = await SIsb.currentUser(); me = (u && u.email) || ''; } catch (e) {}
+    brand.brief = Object.assign({}, brand.brief || {}, patch, { updatedAt: new Date().toISOString(), updatedBy: me });
+    Object.keys(brand.brief).forEach(k => { if (k[0] === '_') delete brand.brief[k]; });
+    const { error } = await c.from('merchants').update({ brand: brand }).eq('id', id);
+    if (error) throw error;
+    return Object.assign({}, brand.brief);
+  }
+  const briefFilled = b => BRIEF_FIELDS.filter(([k]) => String(b[k] || '').trim()).length;
+  function renderBrief(f, force) {
+    const el = $('brief'); if (!el) return;
+    // Don't redraw under a rep who's typing in this folder's brief.
+    if (!force && el.dataset.fid === f.id && el.contains(document.activeElement) && document.activeElement.matches('textarea, input')) return;
+    if (el.dataset.fid !== f.id) briefStatus = '';
+    el.dataset.fid = f.id;
+    const b = briefs[f.id];
+    if (!b) { el.innerHTML = '<summary>📋 Brief <span class="n">loading…</span></summary>'; briefLoad(f.id).then(v => { briefs[f.id] = v; if (openId === f.id) renderBrief(f); }, () => { briefs[f.id] = { failed: true }; if (openId === f.id) renderBrief(f); }); return; }
+    let open = true; try { open = localStorage.getItem('si_brief_open') !== '0'; } catch (e) {}
+    el.open = open;
+    const n = briefFilled(b);
+    el.innerHTML = '<summary>📋 Brief <span class="n">' + n + ' of ' + BRIEF_FIELDS.length + (b.updatedAt ? ' · updated ' + esc(ago(b.updatedAt)) + (b.updatedBy ? ' by ' + esc(who(b.updatedBy)) : '') : '') + '</span></summary>' +
+      '<div class="bk-note">' + (b.failed ? 'Couldn’t load the brief (sign in?).' : 'Call-prep facts for this merchant. Recon fills these in; edit anything, it saves as you type.') + '</div>' +
+      '<div class="br-grid">' + BRIEF_FIELDS.map(([k, label, ph]) =>
+        '<label class="br-f' + (k === 'tldr' ? ' wide' : '') + '"><span>' + esc(label) + '</span><textarea data-brf="' + k + '" rows="' + (k === 'tldr' ? 3 : 2) + '" placeholder="' + esc(ph) + '">' + esc(b[k] || '') + '</textarea></label>').join('') + '</div>' +
+      '<div class="br-hs"><input type="text" data-brf="deal" value="' + esc(b.deal || '') + '" placeholder="HubSpot deal link or ID (blank = find it by the store URL)" autocomplete="off">' +
+        '<button class="btn small" type="button" data-bract="copy" title="Copy the brief as text">📋 Copy</button>' +
+        '<button class="btn small primary" type="button" data-bract="push" title="Post the full brief as a note on the HubSpot deal">⤴ Push to HubSpot</button></div>' +
+      '<div class="br-st"><span class="br-msg">' + esc(briefStatus) + '</span>' + (b.pushedAt ? '<span>Last pushed to HubSpot ' + esc(ago(b.pushedAt)) + (b.pushedUrl ? ' · <a href="' + esc(b.pushedUrl) + '" target="_blank" rel="noopener">open deal ↗</a>' : '') + '</span>' : '') + '</div>';
+    el.querySelectorAll('textarea').forEach(briefFit);
+  }
+  function briefFit(t) { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, 420) + 'px'; }
+  function briefSetStatus(msg) { briefStatus = msg; const s = document.querySelector('#brief .br-msg'); if (s) s.textContent = msg; }
+  function briefFlush() {
+    clearTimeout(briefT);
+    const id = briefFor, b = briefs[id]; if (!id || !b || !b._dirty) return Promise.resolve();
+    const patch = {}; BRIEF_FIELDS.forEach(([k]) => { patch[k] = b[k] || ''; }); patch.deal = b.deal || '';
+    b._dirty = false; briefSetStatus('Saving…');
+    return briefSave(id, patch).then(v => { briefs[id] = Object.assign(v, { _dirty: b._dirty }); if (openId === id) briefSetStatus('Saved ✓'); }, x => { b._dirty = true; briefSetStatus('Couldn’t save: ' + (x.message || x)); });
+  }
+  function briefText(f, b, html) {
+    const rows = BRIEF_FIELDS.filter(([k]) => String(b[k] || '').trim());
+    if (!html) return 'Brief · ' + f.name + '\n\n' + rows.map(([k, l]) => l + ': ' + String(b[k]).trim()).join('\n\n');
+    const h = s => esc(String(s).trim()).replace(/\n/g, '<br>');
+    return '<h3>📋 Brief · ' + esc(f.name) + '</h3>' + rows.map(([k, l]) => '<p><strong>' + esc(l) + ':</strong> ' + h(b[k]) + '</p>').join('') +
+      (f.domain ? '<p><strong>Store:</strong> ' + esc(f.domain) + '</p>' : '') +
+      '<p><strong>Brand Folder:</strong> <a href="https://drewshafe.github.io/si-rep-hub/folders.html?id=' + esc(f.id) + '">Rep Hub ↗</a></p>';
+  }
+  async function hsNote(body) {
+    const c = await SIsb.client();
+    const { data } = await c.auth.getSession();
+    if (!data || !data.session) throw new Error('Sign in to the Rep Hub first');
+    const r = await fetch(SB_FN + 'hubspot-note', { method: 'POST', headers: { authorization: 'Bearer ' + data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    let j = {}; try { j = await r.json(); } catch (e) {}
+    if (!r.ok) throw new Error(j.error || (r.status === 404 ? 'The HubSpot connection isn’t set up yet (hubspot-note function).' : 'HubSpot push failed (HTTP ' + r.status + ')'));
+    return j;
+  }
+  $('brief').addEventListener('toggle', e => { try { localStorage.setItem('si_brief_open', e.target.open ? '1' : '0'); } catch (x) {} });
+  $('brief').addEventListener('input', e => {
+    const k = e.target.dataset.brf, b = briefs[openId]; if (!k || !b) return;
+    if (briefFor && briefFor !== openId) briefFlush();
+    briefFor = openId; b[k] = e.target.value; b._dirty = true;
+    if (e.target.tagName === 'TEXTAREA') briefFit(e.target);
+    const sum = document.querySelector('#brief summary .n'); if (sum) sum.textContent = briefFilled(b) + ' of ' + BRIEF_FIELDS.length + ' · editing';
+    briefSetStatus('Unsaved changes…'); clearTimeout(briefT); briefT = setTimeout(briefFlush, 800);
+  });
+  $('brief').addEventListener('focusout', () => { setTimeout(() => { if (!$('brief').contains(document.activeElement)) briefFlush(); }, 0); });
+  $('brief').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-bract]'); if (!btn) return;
+    const f = folders.find(x => x.id === openId), b = briefs[openId]; if (!f || !b) return;
+    if (!briefFilled(b)) return toast('The brief is empty');
+    if (btn.dataset.bract === 'copy') {
+      const t = briefText(f, b, false);
+      try { await navigator.clipboard.writeText(t); toast('Brief copied'); } catch (x) { prompt('Copy the brief:', t); }
+      return;
+    }
+    // ⤴ HubSpot: find the deal, confirm it with the rep, then post.
+    btn.disabled = true; const old = btn.textContent; btn.textContent = '⤴ Finding the deal…';
+    try {
+      await briefFlush();
+      const look = await hsNote({ dry: true, deal: b.deal || '', domain: f.domain || '', name: f.name });
+      const d = look.deal, more = (look.candidates || []).length > 1 ? '\n\n' + look.candidates.length + ' deals matched; this is the newest open one. To pick another, paste its link in the HubSpot deal field.' : '';
+      if (!confirm('Post this brief as a note on the HubSpot deal\n\n“' + d.name + '”' + (d.stage ? ' (' + d.stage + ')' : '') + '?' + more)) return;
+      btn.textContent = '⤴ Posting…';
+      const res = await hsNote({ deal: d.id, html: briefText(f, b, true) });
+      briefs[openId] = await briefSave(openId, Object.assign(b.deal ? {} : { deal: d.url }, { pushedAt: new Date().toISOString(), pushedUrl: res.url }));
+      briefStatus = 'Posted to HubSpot ✓'; renderBrief(f, true);
+      toast('Brief posted as a note on ' + d.name);
+    } catch (x) { toast(x.message || String(x)); briefSetStatus(x.message || String(x)); }
+    finally { btn.disabled = false; btn.textContent = old; }
+  });
+  window.addEventListener('beforeunload', () => { briefFlush(); });
 
   // ── create / edit folder ──
   function folderForm(f) {
