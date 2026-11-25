@@ -1156,7 +1156,7 @@
     const id = briefFor, b = briefs[id]; if (!id || !b || !b._dirty) return Promise.resolve();
     const patch = {}; BRIEF_FIELDS.forEach(([k]) => { patch[k] = b[k] || ''; }); patch.deal = b.deal || '';
     b._dirty = false; briefSetStatus('Saving…');
-    return briefSave(id, patch).then(v => { briefs[id] = Object.assign(v, { _dirty: b._dirty }); if (openId === id) briefSetStatus('Saved ✓'); }, x => { b._dirty = true; briefSetStatus('Couldn’t save: ' + (x.message || x)); });
+    return briefSave(id, patch).then(v => { briefs[id] = Object.assign(v, { _dirty: b._dirty }); if (openId === id) { briefSetStatus('Saved ✓'); const n = document.querySelector('#brief summary .n'); if (n) n.textContent = briefFilled(v) + ' of ' + BRIEF_FIELDS.length + ' · updated just now' + (v.updatedBy ? ' by ' + who(v.updatedBy) : ''); } }, x => { b._dirty = true; briefSetStatus('Couldn’t save: ' + (x.message || x)); });
   }
   function briefText(f, b, html) {
     const rows = BRIEF_FIELDS.filter(([k]) => String(b[k] || '').trim());
