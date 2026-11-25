@@ -91,8 +91,10 @@
         ? '<b>' + esc(cur.title || 'Untitled') + '</b> · saved ' + esc(ago(cur.updated_at))
         : (a ? 'Not saved to this folder yet' : '');
       const can = !!(user && a);
+      // ?folder=<id> pins this tab to one folder (sb.js); other tabs switching folders don't move it.
+      const pin = SIsb.pinnedFolder && SIsb.pinnedFolder();
       bar.innerHTML =
-        (a ? '<button type="button" class="sifb-m" data-a="folders" title="Change merchant in Merchant Folders">' + lg + '<span class="sifb-mn"><small>Merchant folder</small><b>' + esc(a.name) + '</b></span></button>'
+        (a ? '<button type="button" class="sifb-m" data-a="folders" title="' + (pin ? 'This tab is pinned to ' + esc(a.name || 'this folder') + ' by its link. Other tabs switching folders won’t change it.' : 'Change merchant in Merchant Folders') + '">' + lg + '<span class="sifb-mn"><small>Merchant folder' + (pin ? ' · 📌 this tab' : '') + '</small><b>' + esc(a.name || (pin ? 'Loading…' : '')) + '</b></span></button>'
            : '<button type="button" class="sifb-m none" data-a="folders">📁 Pick a merchant folder</button>') +
         '<span class="sifb-cur">' + (user ? curTxt : 'Sign in to save to merchant folders') + '</span>' +
         (user ? '' : '<button type="button" class="sifb-b" data-a="signin">Sign in</button>') +
