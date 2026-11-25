@@ -1094,8 +1094,8 @@
 
   // ── 📋 Brief: the merchant's call-prep facts, saved on the folder (merchants.brand.brief) so the
   // whole team sees them. Skills (demo-booked-recon, prep-call) fill the fields; reps edit them here.
-  // ⤴ HubSpot posts the brief as a note on the deal through the hubspot-note function (the HubSpot
-  // token stays server-side). ──
+  // ⤴ HubSpot copies the brief as formatted text and opens the deal: the rep clicks Create note and
+  // pastes. No HubSpot app or token needed. (Claude can also post it for you: hub-map § Brief.) ──
   const BRIEF_FIELDS = [
     ['tldr', 'TL;DR', 'The one thing to know going in'],
     ['products', 'Products', 'What they sell, price points, bestsellers'],
@@ -1106,7 +1106,14 @@
     ['people', 'People we know', 'Connections, ShipInsure brand ties'],
     ['history', 'History', 'Prior touches, calls, deals, lead source']
   ];
-  const SB_FN = 'https://oiljklutlmtztascnkpm.supabase.co/functions/v1/';
+  const HS_PORTAL = '22466049';
+  // The deal field → a HubSpot link: a pasted deal URL as is, a bare deal id as its record, blank = a deal search for the merchant.
+  function hsDealUrl(deal, name) {
+    const d = String(deal || '').trim();
+    if (/^https:\/\/app[\w-]*\.hubspot\.com\//i.test(d)) return d;
+    if (/^\d{4,}$/.test(d)) return 'https://app.hubspot.com/contacts/' + HS_PORTAL + '/record/0-3/' + d;
+    return 'https://app.hubspot.com/contacts/' + HS_PORTAL + '/objects/0-3/views/all/list?query=' + encodeURIComponent(name || '');
+  }
   const briefs = {};   // folder id → brief ({} when empty)
   let briefT = 0, briefStatus = '', briefFor = null;   // briefFor: the folder whose edits are pending
   async function briefLoad(id) {
@@ -1143,10 +1150,10 @@
       '<div class="bk-note">' + (b.failed ? 'Couldn’t load the brief (sign in?).' : 'Call-prep facts for this merchant. Recon fills these in; edit anything, it saves as you type.') + '</div>' +
       '<div class="br-grid">' + BRIEF_FIELDS.map(([k, label, ph]) =>
         '<label class="br-f' + (k === 'tldr' ? ' wide' : '') + '"><span>' + esc(label) + '</span><textarea data-brf="' + k + '" rows="' + (k === 'tldr' ? 3 : 2) + '" placeholder="' + esc(ph) + '">' + esc(b[k] || '') + '</textarea></label>').join('') + '</div>' +
-      '<div class="br-hs"><input type="text" data-brf="deal" value="' + esc(b.deal || '') + '" placeholder="HubSpot deal link or ID (blank = find it by the store URL)" autocomplete="off">' +
+      '<div class="br-hs"><input type="text" data-brf="deal" value="' + esc(b.deal || '') + '" placeholder="HubSpot deal link or ID (blank = search deals by the merchant name)" autocomplete="off">' +
         '<button class="btn small" type="button" data-bract="copy" title="Copy the brief as text">📋 Copy</button>' +
-        '<button class="btn small primary" type="button" data-bract="push" title="Post the full brief as a note on the HubSpot deal">⤴ Push to HubSpot</button></div>' +
-      '<div class="br-st"><span class="br-msg">' + esc(briefStatus) + '</span>' + (b.pushedAt ? '<span>Last pushed to HubSpot ' + esc(ago(b.pushedAt)) + (b.pushedUrl ? ' · <a href="' + esc(b.pushedUrl) + '" target="_blank" rel="noopener">open deal ↗</a>' : '') + '</span>' : '') + '</div>';
+        '<button class="btn small primary" type="button" data-bract="push" title="Copies the brief and opens the deal in HubSpot: click Create note, then paste (⌘V)">⤴ Copy + open deal</button></div>' +
+      '<div class="br-st"><span class="br-msg">' + esc(briefStatus) + '</span></div>';
     el.querySelectorAll('textarea').forEach(briefFit);
   }
   function briefFit(t) { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, 420) + 'px'; }
@@ -1165,15 +1172,6 @@
     return '<h3>📋 Brief · ' + esc(f.name) + '</h3>' + rows.map(([k, l]) => '<p><strong>' + esc(l) + ':</strong> ' + h(b[k]) + '</p>').join('') +
       (f.domain ? '<p><strong>Store:</strong> ' + esc(f.domain) + '</p>' : '') +
       '<p><strong>Brand Folder:</strong> <a href="https://drewshafe.github.io/si-rep-hub/folders.html?id=' + esc(f.id) + '">Rep Hub ↗</a></p>';
-  }
-  async function hsNote(body) {
-    const c = await SIsb.client();
-    const { data } = await c.auth.getSession();
-    if (!data || !data.session) throw new Error('Sign in to the Rep Hub first');
-    const r = await fetch(SB_FN + 'hubspot-note', { method: 'POST', headers: { authorization: 'Bearer ' + data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    let j = {}; try { j = await r.json(); } catch (e) {}
-    if (!r.ok) throw new Error(j.error || (r.status === 404 ? 'The HubSpot connection isn’t set up yet (hubspot-note function).' : 'HubSpot push failed (HTTP ' + r.status + ')'));
-    return j;
   }
   $('brief').addEventListener('toggle', e => { try { localStorage.setItem('si_brief_open', e.target.open ? '1' : '0'); } catch (x) {} });
   $('brief').addEventListener('input', e => {
@@ -1194,20 +1192,15 @@
       try { await navigator.clipboard.writeText(t); toast('Brief copied'); } catch (x) { prompt('Copy the brief:', t); }
       return;
     }
-    // ⤴ HubSpot: find the deal, confirm it with the rep, then post.
-    btn.disabled = true; const old = btn.textContent; btn.textContent = '⤴ Finding the deal…';
-    try {
-      await briefFlush();
-      const look = await hsNote({ dry: true, deal: b.deal || '', domain: f.domain || '', name: f.name });
-      const d = look.deal, more = (look.candidates || []).length > 1 ? '\n\n' + look.candidates.length + ' deals matched; this is the newest open one. To pick another, paste its link in the HubSpot deal field.' : '';
-      if (!confirm('Post this brief as a note on the HubSpot deal\n\n“' + d.name + '”' + (d.stage ? ' (' + d.stage + ')' : '') + '?' + more)) return;
-      btn.textContent = '⤴ Posting…';
-      const res = await hsNote({ deal: d.id, html: briefText(f, b, true) });
-      briefs[openId] = await briefSave(openId, Object.assign(b.deal ? {} : { deal: d.url }, { pushedAt: new Date().toISOString(), pushedUrl: res.url }));
-      briefStatus = 'Posted to HubSpot ✓'; renderBrief(f, true);
-      toast('Brief posted as a note on ' + d.name);
-    } catch (x) { toast(x.message || String(x)); briefSetStatus(x.message || String(x)); }
-    finally { btn.disabled = false; btn.textContent = old; }
+    // ⤴ HubSpot: copy the brief as rich text (bold labels survive the paste) and open the deal.
+    // Both start right here in the click, so the popup and clipboard aren't blocked.
+    const html = briefText(f, b, true), text = briefText(f, b, false);
+    window.open(hsDealUrl(b.deal, f.name), '_blank', 'noopener');
+    let copied;
+    try { copied = navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })]); }
+    catch (x) { copied = navigator.clipboard.writeText(text); }
+    try { await copied; briefSetStatus('Copied ✓ · in HubSpot: Notes → Create note → paste (⌘V) → Save'); toast('Brief copied: paste it into a note on the deal'); }
+    catch (x) { prompt('Copy the brief, then paste it into a note on the deal:', text); }
   });
   window.addEventListener('beforeunload', () => { briefFlush(); });
 
