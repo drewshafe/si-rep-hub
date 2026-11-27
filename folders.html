@@ -74,6 +74,17 @@
   .bk-cl input { width:28px; height:24px; border:1px solid var(--line); border-radius:6px; padding:0; background:none; cursor:pointer; flex:0 0 auto; }
   .bk-cl span { display:flex; flex-direction:column; line-height:1.2; } .bk-cl b { font-size:12px; } .bk-cl small { font-size:11px; color:var(--muted); font-family:ui-monospace,monospace; }
   .bk-a .btn { padding:4px 8px; font-size:11.5px; }
+  /* From website: images found on the merchant's store, pick one for the brand kit */
+  .wpk { position:fixed; inset:0; z-index:70; background:rgba(17,20,33,.55); display:flex; align-items:center; justify-content:center; padding:20px; }
+  .wpk-b { background:var(--card, #fff); color:var(--ink, #1d2240); border-radius:14px; width:min(860px, 100%); max-height:88vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  .wpk-h { padding:14px 18px; border-bottom:1px solid var(--line, #e3e5f2); display:flex; align-items:center; gap:10px; }
+  .wpk-h b { font-size:15px; } .wpk-h span { font-size:12px; color:var(--muted, #6b7090); flex:1; }
+  .wpk-g { padding:14px 18px; overflow:auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; }
+  .wpk-g button { border:2px solid var(--line, #e3e5f2); border-radius:10px; padding:4px; background:var(--card, #fff); cursor:pointer; display:flex; flex-direction:column; gap:4px; text-align:left; font-size:10.5px; color:var(--muted, #6b7090); }
+  .wpk-g button:hover { border-color:var(--accent, #6675ff); }
+  .wpk-g img { width:100%; height:110px; object-fit:cover; border-radius:6px; background:#f0f1f6; display:block; }
+  .wpk-g.prod img { object-fit:contain; background:#fff; }
+  .wpk-m { padding:30px; text-align:center; color:var(--muted, #6b7090); font-size:13px; grid-column:1 / -1; }
   body.pm .bk-pv { background:repeating-conic-gradient(#1b1b22 0% 25%, #24242c 0% 50%) 0 0/12px 12px; }
   .dhead .logo { width:56px; height:56px; font-size:20px; border-radius:12px; }
   .dhead .dtitle { margin-right:auto; min-width:0; }
@@ -1022,6 +1033,7 @@
         return '<div class="bk-t" data-bk="' + s.k + '"><div class="bk-pv' + (s.k === 'banner' || s.k === 'lifestyle' ? ' wide' : '') + '">' + (v ? '<img src="' + esc(v) + '" alt="">' : (s.k === 'lock' ? '🔒' : '＋')) + '</div>' +
           '<div class="bk-l">' + esc(s.label) + '</div><div class="bk-h">' + esc(s.hint) + '</div><div class="bk-a">' +
           (s.k === 'lock' ? '<button class="btn small primary" type="button" data-bka="build" title="Their logo inside the ShipInsure lock">🔒 Build</button>' : '') +
+          (s.k === 'lifestyle' || s.k === 'product' ? '<button class="btn small primary" type="button" data-bka="web" title="Pick one from the merchant’s website (needs the store URL on the folder)">🌐 From website</button>' : '') +
           '<button class="btn small" type="button" data-bka="up">⬆ ' + (v ? 'Replace' : 'Upload') + '</button>' +
           (v ? '<button class="btn small ghost" type="button" data-bka="copy" title="Copy the image link">🔗</button><button class="btn small ghost" type="button" data-bka="del" title="Remove">✕</button>' : '') +
           '</div></div>';
@@ -1050,6 +1062,125 @@
       r.onerror = rej; r.readAsDataURL(file);
     });
   }
+  // ── 🌐 From website: the merchant's own photos, for the Lifestyle and Product photo slots ──
+  // Shopify stores are read straight from the browser (their open product JSON): product photos are the
+  // best sellers' main images (else the newest products'); lifestyle photos are collection banners and the
+  // products' other images. Signed in, Claude also reads the home page (any store) for its hero / banner
+  // photos and product shots. The pick is copied into the brand kit's own storage.
+  const SB_FN = 'https://oiljklutlmtztascnkpm.supabase.co/functions/v1/';
+  let _claudeTok = null;
+  async function claudeHeaders() {
+    const c = await SIsb.client();
+    let s = ((await c.auth.getSession()).data || {}).session;
+    if (!s) throw new Error('not signed in');
+    if (!(_claudeTok && _claudeTok.user === s.user.id && _claudeTok.exp > Date.now() + 60000)) {
+      const ask = jwt => fetch(SB_FN + 'anthropic-token', { method: 'POST', headers: { authorization: 'Bearer ' + jwt } }).then(async r => ({ ok: r.ok, status: r.status, j: await r.json().catch(() => ({})) }));
+      let r = await ask(s.access_token);
+      if (!r.ok && r.status === 401) { s = ((await c.auth.refreshSession()).data || {}).session; if (s) r = await ask(s.access_token); }
+      if (!r.ok || !r.j.access_token) throw new Error('no Claude access');
+      _claudeTok = { token: r.j.access_token, exp: Date.now() + (r.j.expires_in || 600) * 1000, user: s.user.id };
+    }
+    return { 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true', authorization: 'Bearer ' + _claudeTok.token };
+  }
+  const WEB_SKIP = /gift ?card|e-?gift|gift certificate|shipping protection|package protection|shipinsure|route protection|\binsurance\b|warranty|donation|\bsample\b|mystery|\btip\b/i;
+  const sized = (src, w) => { src = String(src || ''); if (src.startsWith('//')) src = 'https:' + src; if (!/^https:\/\//i.test(src)) return ''; if (/cdn\.shopify\.com|\/cdn\/shop\//.test(src)) { try { const u = new URL(src); u.searchParams.set('width', String(w)); return u.toString(); } catch (e) {} } return src; };
+  async function getJSON(url) { const r = await fetch(url, { headers: { accept: 'application/json' } }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }
+  async function shopifyImages(origin) {
+    const out = { product: [], lifestyle: [], shopify: false };
+    let prods = [];
+    try { prods = (await getJSON(origin + '/products.json?limit=60')).products || []; out.shopify = Array.isArray(prods); } catch (e) { return out; }
+    let cols = [];
+    try { cols = ((await getJSON(origin + '/collections.json?limit=250')).collections || []).filter(c => c.products_count !== 0); } catch (e) {}
+    // Best sellers first, when the store has such a collection.
+    const best = cols.find(c => /best-?sell|bestseller|top-?sell|most-popular/.test((c.handle || '').toLowerCase()));
+    if (best) { try { const b = (await getJSON(origin + '/collections/' + encodeURIComponent(best.handle) + '/products.json?limit=30')).products || []; const ids = new Set(b.map(p => p.id)); prods = b.concat(prods.filter(p => !ids.has(p.id))); } catch (e) {} }
+    prods = prods.filter(p => p && p.title && !WEB_SKIP.test(p.title));
+    prods.forEach(p => { const im = (p.images || [])[0]; if (im && im.src) out.product.push({ u: im.src, l: p.title + (best && out.product.length < 30 ? '' : '') }); });
+    cols.forEach(c => { if (c.image && c.image.src) out.lifestyle.push({ u: c.image.src, l: 'Collection · ' + (c.title || c.handle) }); });
+    prods.slice(0, 40).forEach(p => (p.images || []).slice(1, 6).forEach(im => { if (im && im.src) out.lifestyle.push({ u: im.src, l: p.title }); }));
+    return out;
+  }
+  // How much of an image's border is one plain light color (0 = a busy scene, 1 = a product on a plain
+  // background): lifestyle photos rank busy first, product photos plain first. Unreadable images get 0.5.
+  function plainness(u) {
+    return new Promise(res => {
+      const im = new Image(); im.crossOrigin = 'anonymous';
+      const done = v => { clearTimeout(t); res(v); }, t = setTimeout(() => res(0.5), 6000);
+      im.onload = () => {
+        try {
+          const W = 64, H = Math.max(8, Math.round(64 * im.naturalHeight / im.naturalWidth)), c = document.createElement('canvas'); c.width = W; c.height = H;
+          const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(im, 0, 0, W, H);   // a see-through background reads as white, as on the page
+          const d = x.getImageData(0, 0, W, H).data, px = [];
+          for (let i = 0; i < W; i++) { px.push(i, 0, i, H - 1); }
+          for (let j = 0; j < H; j++) { px.push(0, j, W - 1, j); }
+          const at = (a, b) => { const o = (b * W + a) * 4; return [d[o], d[o + 1], d[o + 2]]; };
+          const P = []; for (let i = 0; i < px.length; i += 2) P.push(at(px[i], px[i + 1]));
+          const m = [0, 1, 2].map(k => P.reduce((s, p) => s + p[k], 0) / P.length);
+          const near = P.filter(p => Math.abs(p[0] - m[0]) + Math.abs(p[1] - m[1]) + Math.abs(p[2] - m[2]) < 30).length / P.length;
+          done(near * ((m[0] + m[1] + m[2]) / 3 > 170 ? 1 : 0.6));
+        } catch (e) { done(0.5); }
+      };
+      im.onerror = () => done(-1);
+      im.src = sized(u, 120);
+    });
+  }
+  async function rankByLook(list, isProd) {
+    const out = [];
+    for (let i = 0; i < list.length; i += 12) out.push(...await Promise.all(list.slice(i, i + 12).map(async x => Object.assign(x, { p: await plainness(x.u) }))));
+    return out.filter(x => x.p >= 0).filter(x => isProd || x.p < 0.85).sort((a, b) => isProd ? b.p - a.p : a.p - b.p);
+  }
+  async function claudeImages(origin) {
+    // Server-side, so it works where the store refuses browser requests: the home page, and (Shopify) its product list.
+    const body = { model: 'claude-sonnet-5-5', max_tokens: 6000, tools: [{ type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 3, allowed_domains: [new URL(origin).hostname.replace(/^www\./, '')] }],
+      messages: [{ role: 'user', content: 'Fetch ' + origin + '/ (an online store’s home page), and if it is a Shopify store also ' + origin + '/products.json?limit=50 (its product list as JSON; skip it if that fails). Return ONLY JSON, no markdown: {"lifestyle":["absolute image URLs of hero, banner and lifestyle photos (people or products in use, collection banners), biggest and most prominent first"],"product":["absolute image URLs of product photos (one product, plain background): each product’s main image, best sellers or featured products first"]}. Only image URLs that appear in what you fetched; at most 16 of each. Leave out logos, icons, payment badges, gift cards, shipping protection and tiny images.' }] };
+    let data;
+    for (let i = 0; i < 4; i++) {
+      const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: await claudeHeaders(), body: JSON.stringify(body) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      data = await r.json();
+      if (data.stop_reason !== 'pause_turn') break;
+      body.messages = body.messages.concat([{ role: 'assistant', content: data.content }]);
+    }
+    const raw = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const j = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+    const abs = u => { try { return new URL(String(u).replace(/^\/\//, 'https://'), origin + '/').toString(); } catch (e) { return ''; } };
+    return { lifestyle: (j.lifestyle || []).map(abs).filter(Boolean).map(u => ({ u, l: 'Home page' })), product: (j.product || []).map(abs).filter(Boolean).map(u => ({ u, l: 'Home page' })) };
+  }
+  async function webPick(f, slot) {
+    if (!f.domain) return toast('Add ' + f.name + '’s store URL first (✎ Edit folder)');
+    const origin = 'https://' + String(f.domain).replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+    const isProd = slot === 'product', label = isProd ? 'Product photo' : 'Lifestyle photo';
+    const w = document.createElement('div'); w.className = 'wpk';
+    w.innerHTML = '<div class="wpk-b"><div class="wpk-h"><b>🌐 ' + esc(label) + ' from ' + esc(f.domain) + '</b><span id="wpkNote">Looking at the store…</span><button class="btn small" type="button" data-x>Close</button></div><div class="wpk-g' + (isProd ? ' prod' : '') + '" id="wpkG"><div class="wpk-m">Finding images…</div></div></div>';
+    document.body.appendChild(w);
+    w.addEventListener('click', e => { if (e.target === w || e.target.closest('[data-x]')) w.remove(); });
+    const seen = new Set(), list = [], key = u => String(u).replace(/[?#].*$/, '').replace(/_\d+x\d*(?=\.)/, '');
+    const add = arr => (arr || []).forEach(x => { const k = key(x.u); if (x.u && !seen.has(k)) { seen.add(k); list.push(x); } });
+    const paint = (note) => {
+      $('wpkNote').textContent = note || '';
+      $('wpkG').innerHTML = list.length ? list.slice(0, 48).map((x, i) => '<button type="button" data-i="' + i + '" title="Use this one"><img src="' + esc(sized(x.u, 400)) + '" alt="" loading="lazy" onerror="this.closest(\'button\').remove()">' + esc(String(x.l || '').slice(0, 48)) + '</button>').join('') : '<div class="wpk-m">No ' + label.toLowerCase() + 's found on ' + esc(f.domain) + '. Upload one instead.</div>';
+    };
+    let shop = { product: [], lifestyle: [], shopify: false };
+    try { shop = await shopifyImages(origin); } catch (e) {}
+    if (shop.shopify) $('wpkNote').textContent = 'Sorting ' + (isProd ? 'product shots' : 'scenes from product shots') + '…';
+    add(await rankByLook((isProd ? shop.product : shop.lifestyle).slice(0, 160), isProd));
+    const signed = await SIsb.currentUser().catch(() => null);
+    paint(shop.shopify ? (list.length ? 'From the store’s products and collections' + (isProd ? ' (best sellers first)' : '') + '.' + (signed ? ' Reading the home page too…' : '') : '') : (signed ? 'Reading the home page…' : 'This doesn’t look like a Shopify store. Sign in so Claude can read its home page.'));
+    if (signed) {
+      try { const c = await claudeImages(origin); const before = list.length; isProd ? add(c.product) : list.unshift(...c.lifestyle.filter(x => !seen.has(key(x.u)) && seen.add(key(x.u)))); paint((shop.shopify ? 'From the store’s products, collections and home page.' : 'From the store’s home page.') + (list.length === before ? '' : '')); }
+      catch (e) { paint(list.length ? 'From the store’s products and collections (couldn’t read the home page).' : 'Couldn’t read ' + f.domain + '. Upload one instead.'); }
+    }
+    $('wpkG').addEventListener('click', async e => {
+      const b = e.target.closest('[data-i]'); if (!b) return;
+      const x = list[+b.dataset.i]; if (!x) return;
+      $('wpkNote').textContent = 'Saving it to the brand kit…';
+      // Copied into the brand kit's own storage (sized for its slot); if the store won't hand the file over, its link is kept.
+      let v = sized(x.u, BK_MAX[slot] || 1600);
+      try { const r = await fetch(v); if (r.ok) { const blob = await r.blob(); v = await bkShrink(blob, BK_MAX[slot] || 1600); } } catch (er) {}
+      w.remove();
+      bkSet(f, slot, v);
+    });
+  }
   async function bkSet(f, slot, v) {
     try {
       kits[f.id] = await SIBrand.set(f.id, slot, v);
@@ -1066,6 +1197,7 @@
     const t = b.closest('[data-bk]'), f = folders.find(x => x.id === openId), slot = t ? t.dataset.bk : '', k = kits[openId] || {};
     if (!f) return;
     if (b.dataset.bka === 'up') { const inp = $('bkFile'); inp.dataset.slot = slot; inp.click(); }
+    if (b.dataset.bka === 'web') return webPick(f, slot);
     if (b.dataset.bka === 'del') { if (confirm('Remove the ' + SIBrand.SLOTS.find(s => s.k === slot).label.toLowerCase() + ' from ' + f.name + '’s brand kit?')) bkSet(f, slot, ''); }
     if (b.dataset.bka === 'copy') { try { await navigator.clipboard.writeText(k[slot]); toast('Image link copied'); } catch (x) { prompt('Image link:', k[slot]); } }
     if (b.dataset.bka === 'pal') {
